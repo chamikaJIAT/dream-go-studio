@@ -1,0 +1,415 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+/* Main Container taking full viewport */
+.booking-container {
+    width: 100vw;
+    min-height: 100vh;
+    font-family: 'Outfit', sans-serif;
+    background: #1a1a2e;
+    /* Fallback */
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Wrapper now acts as the full screen flex container */
+.booking-wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Left side Form Area */
+.booking-form-section {
+    flex: 1;
+    padding: 2rem 10%;
+    /* Responsive padding */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+    position: relative;
+    z-index: 2;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    /* Shadow falling over the image on desktop */
+}
+
+/* Right side Image Area */
+.booking-image-section {
+    flex: 1.2;
+    /* Slightly larger image portion */
+    background: url('https://images.unsplash.com/photo-1542038784456-1ea8e935640e?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    padding: 4rem 10%;
+}
+
+/* Dark gradient overlay on the image for readability */
+.booking-image-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(15, 15, 25, 0.95) 0%, rgba(20, 20, 35, 0.3) 50%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+.image-overlay {
+    position: relative;
+    z-index: 1;
+    text-align: left;
+    animation: slideUp 0.8s 0.2s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.image-overlay h1 {
+    font-size: 4rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    letter-spacing: -1px;
+}
+
+.image-overlay .tagline {
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+.booking-header {
+    margin-bottom: 2.5rem;
+    text-align: left;
+}
+
+.booking-header h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+}
+
+.booking-header p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.booking-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 500px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-group label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-left: 0.2rem;
+}
+
+.input-group input[type="text"],
+.input-group input[type="tel"],
+.package-dropdown {
+    width: 100%;
+    padding: 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1.05rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    appearance: none;
+}
+
+.input-group input:focus,
+.package-dropdown:focus {
+    outline: none;
+    border-color: #8ec5fc;
+    box-shadow: 0 0 0 3px rgba(142, 197, 252, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.input-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.package-dropdown option {
+    background: #16213e;
+    color: #fff;
+    padding: 1rem;
+}
+
+/* Fix for mobile OS default dropdown styling forcing black text */
+select.package-dropdown {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+select.package-dropdown option {
+    color: #000;
+    background-color: #fff;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 1.2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+.submit-button {
+    margin-top: 1.5rem;
+    padding: 1.2rem;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
+}
+
+.submit-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(118, 75, 162, 0.5);
+}
+
+.submit-button:active {
+    transform: translateY(0);
+}
+
+.success-message {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(46, 213, 115, 0.15);
+    border: 1px solid rgba(46, 213, 115, 0.3);
+    border-radius: 12px;
+    color: #2ed573;
+    text-align: center;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* --- Responsive Layout Adjustments --- */
+
+/* Make form area handle overflow gracefully with custom scrollbar */
+.scrollable-section {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+/* Custom Scrollbar for the form side */
+.scrollable-section::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollable-section::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.scrollable-section::-webkit-scrollbar-thumb {
+    background: rgba(142, 197, 252, 0.5);
+    border-radius: 4px;
+}
+
+.scrollable-section::-webkit-scrollbar-thumb:hover {
+    background: #8ec5fc;
+}
+
+/* Map specific styles */
+.map-wrapper {
+    height: 250px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-map {
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+    /* Keep map below navbar */
+}
+
+/* Dark mode tweaks for leaflet */
+.leaflet-container {
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.map-help-text {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 0.5rem 0.2rem;
+}
+
+/* Tablets and Smaller Laptops */
+@media (max-width: 1024px) {
+
+    /* Stack the image on top and form at the bottom */
+    .booking-wrapper {
+        flex-direction: column;
+    }
+
+    .booking-image-section {
+        flex: none;
+        min-height: 40vh;
+        /* Image takes top 40% of the screen */
+        padding: 3rem 5%;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Make gradient uniform for center aligned text */
+    .booking-image-section::before {
+        background: rgba(15, 15, 25, 0.6);
+    }
+
+    .image-overlay {
+        text-align: center;
+    }
+
+    .image-overlay h1 {
+        font-size: 3.5rem;
+    }
+
+    .booking-form-section {
+        flex: none;
+        min-height: 60vh;
+        padding: 4rem 5%;
+        align-items: center;
+        /* Center the form content */
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+        /* Shadow upwards */
+    }
+
+    /* Keep header and form aligned centered or to the left inside container */
+    .booking-header,
+    .booking-form {
+        width: 100%;
+        max-width: 600px;
+    }
+}
+
+/* Mobile Phones */
+@media (max-width: 600px) {
+    .booking-image-section {
+        min-height: 35vh;
+    }
+
+    .image-overlay h1 {
+        font-size: 2.5rem;
+    }
+
+    .image-overlay .tagline {
+        font-size: 1rem;
+    }
+
+    .booking-form-section {
+        padding: 3rem 1.5rem;
+    }
+
+    .booking-header h2 {
+        font-size: 2rem;
+    }
+
+    .input-group input[type="text"],
+    .input-group input[type="tel"],
+    .package-dropdown {
+        padding: 1rem;
+    }
+}
+
+.selected-package-details {
+    margin-top: 0.8rem;
+    padding: 1.2rem;
+    background: rgba(142, 197, 252, 0.1);
+    border: 1px solid rgba(142, 197, 252, 0.2);
+    border-radius: 12px;
+    animation: slideDownFade 0.3s ease-out;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pkg-price-badge {
+    display: inline-block;
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.pkg-desc {
+    margin: 0;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
