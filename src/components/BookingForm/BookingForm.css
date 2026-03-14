@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-/* Main Container taking full viewport */
+/* Main Container */
 .booking-container {
-    width: 100vw;
+    width: 100%;
     min-height: 100vh;
     font-family: 'Outfit', sans-serif;
     background: #1a1a2e;
@@ -50,30 +50,53 @@
 .booking-image-section {
     flex: 1.2;
     /* Slightly larger image portion */
-    background: url('https://images.unsplash.com/photo-1542038784456-1ea8e935640e?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+    background: #111;
+    /* Fallback */
     position: relative;
     display: flex;
     align-items: flex-end;
     padding: 4rem 10%;
+    overflow: hidden;
+    /* Hide overflow of absolute slides */
 }
 
-/* Dark gradient overlay on the image for readability */
-.booking-image-section::before {
-    content: '';
+/* Individual Carousel Slide */
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    z-index: 0;
+}
+
+.carousel-slide.active {
+    opacity: 1;
+}
+
+/* Dark gradient overlay on the images for readability */
+.carousel-overlay {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: linear-gradient(to top, rgba(15, 15, 25, 0.95) 0%, rgba(20, 20, 35, 0.3) 50%, rgba(0, 0, 0, 0.1) 100%);
+    z-index: 1;
 }
 
-.image-overlay {
+.image-overlay-content {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     text-align: left;
     animation: slideUp 0.8s 0.2s ease-out forwards;
     opacity: 0;
+    width: 100%;
 }
 
 @keyframes slideUp {
@@ -88,7 +111,7 @@
     }
 }
 
-.image-overlay h1 {
+.image-overlay-content h1 {
     font-size: 4rem;
     font-weight: 700;
     margin: 0 0 1rem 0;
@@ -101,12 +124,38 @@
     letter-spacing: -1px;
 }
 
-.image-overlay .tagline {
+.image-overlay-content .tagline {
     font-size: 1.3rem;
     color: rgba(255, 255, 255, 0.9);
-    margin: 0;
+    margin: 0 0 2rem 0;
     font-weight: 300;
     letter-spacing: 0.5px;
+}
+
+/* Carousel Indicators */
+.carousel-indicators {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.indicator-dot {
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.indicator-dot:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.indicator-dot.active {
+    background: #8ec5fc;
+    width: 24px;
+    border-radius: 10px;
 }
 
 .booking-header {
@@ -389,6 +438,7 @@ select.package-dropdown option {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -409,7 +459,7 @@ select.package-dropdown option {
 
 .pkg-desc {
     margin: 0;
-    color: rgba(255,255,255,0.8);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.9rem;
     line-height: 1.5;
 }
@@ -424,7 +474,8 @@ select.package-dropdown option {
 
 .location-search-input {
     flex: 1;
-    padding: 0.8rem 1rem !important; /* Override general input padding for a slightly tighter fit */
+    padding: 0.8rem 1rem !important;
+    /* Override general input padding for a slightly tighter fit */
 }
 
 .search-button {
@@ -460,7 +511,8 @@ select.package-dropdown option {
     list-style: none;
     max-height: 200px;
     overflow-y: auto;
-    z-index: 1000; /* Ensure it stays above the map */
+    z-index: 1000;
+    /* Ensure it stays above the map */
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 

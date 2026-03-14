@@ -15,8 +15,8 @@ function App() {
     <Router>
       <Routes>
         {/* Public Routes with Navbar */}
-        <Route path="/" element={<><Navbar /><BookingForm /></>} />
-        <Route path="/gallery" element={<><Navbar /><Gallery /></>} />
+        <Route path="/" element={<><Navbar /><div className="public-layout"><BookingForm /></div></>} />
+        <Route path="/gallery" element={<><Navbar /><div className="public-layout"><Gallery /></div></>} />
 
         {/* Admin Routes without Navbar */}
         <Route path="/admin/login" element={<AdminLogin />} />

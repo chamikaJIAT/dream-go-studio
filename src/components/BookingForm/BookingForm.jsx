@@ -38,6 +38,13 @@ function MapUpdater({ center }) {
     return null;
 }
 
+const carouselImages = [
+    'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?q=80&w=1000&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1554048612-b6a482bc67e5?q=80&w=1000&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000&auto=format&fit=crop'
+];
+
 export default function BookingForm() {
     const [packages, setPackages] = useState([]);
     const [formData, setFormData] = useState({
@@ -50,12 +57,16 @@ export default function BookingForm() {
     // Default to Colombo center
     const [location, setLocation] = useState({ lat: 6.9271, lng: 79.8612 });
     const [submitted, setSubmitted] = useState(false);
-    
+
     // Search specific states
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
 
+    // Carousel state
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    // Fetch Packages
     useEffect(() => {
         const unsub = onSnapshot(collection(db, 'packages'), (snapshot) => {
             const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -63,6 +74,17 @@ export default function BookingForm() {
             setPackages(pData);
         });
         return () => unsub();
+    }, []);
+
+    // Carousel Timer
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentImageIndex((prevIndex) =>
+                prevIndex === carouselImages.length - 1 ? 0 : prevIndex + 1
+            );
+        }, 5000); // Change image every 5 seconds
+
+        return () => clearInterval(timer);
     }, []);
 
     const handleChange = (e) => {
@@ -75,7 +97,7 @@ export default function BookingForm() {
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
-        
+
         setIsSearching(true);
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`);
@@ -169,7 +191,6 @@ export default function BookingForm() {
                             />
                         </div>
 
-                        {/* NEW FIELDS START */}
                         <div className="input-group">
                             <label htmlFor="hotelName">Hotel / Event Venue Name</label>
                             <input
@@ -185,7 +206,7 @@ export default function BookingForm() {
 
                         <div className="input-group map-group">
                             <label>Select Precise Location</label>
-                            
+
                             {/* Location Search Input */}
                             <div className="location-search-container">
                                 <input
@@ -201,21 +222,21 @@ export default function BookingForm() {
                                         }
                                     }}
                                 />
-                                <button 
-                                    type="button" 
-                                    onClick={handleSearch} 
+                                <button
+                                    type="button"
+                                    onClick={handleSearch}
                                     className="search-button"
                                     disabled={isSearching}
                                 >
                                     {isSearching ? 'Searching...' : 'Search'}
                                 </button>
-                                
+
                                 {/* Search Results Dropdown */}
                                 {searchResults.length > 0 && (
                                     <ul className="search-results-dropdown">
                                         {searchResults.map((result) => (
-                                            <li 
-                                                key={result.place_id} 
+                                            <li
+                                                key={result.place_id}
                                                 onClick={() => selectSearchResult(result)}
                                                 className="search-result-item"
                                             >
@@ -238,7 +259,6 @@ export default function BookingForm() {
                                 </MapContainer>
                             </div>
                         </div>
-                        {/* NEW FIELDS END */}
 
                         <div className="input-group">
                             <label htmlFor="selectedPackage">Select Package</label>
@@ -261,7 +281,6 @@ export default function BookingForm() {
                                 <div className="select-arrow">▼</div>
                             </div>
 
-                            {/* NEW: Show Package Details if selected */}
                             {formData.selectedPackage && packages.find(p => p.id === formData.selectedPackage) && (
                                 <div className="selected-package-details">
                                     <div className="pkg-price-badge">
@@ -280,11 +299,34 @@ export default function BookingForm() {
                     </form>
                 </div>
 
-                {/* Right Side: Image and Title */}
+                {/* Right Side: Carousel Image Area */}
                 <div className="booking-image-section">
-                    <div className="image-overlay">
+                    {/* Carousel Backgrounds */}
+                    {carouselImages.map((img, index) => (
+                        <div
+                            key={index}
+                            className={`carousel-slide ${index === currentImageIndex ? 'active' : ''}`}
+                            style={{ backgroundImage: `url('${img}')` }}
+                        ></div>
+                    ))}
+
+                    {/* Dark gradient overlay on the image for readability */}
+                    <div className="carousel-overlay"></div>
+
+                    <div className="image-overlay-content">
                         <h1>Dream Go Studio</h1>
                         <p className="tagline">Where moments become eternal memories</p>
+
+                        {/* Carousel Indicators */}
+                        <div className="carousel-indicators">
+                            {carouselImages.map((_, index) => (
+                                <div
+                                    key={index}
+                                    className={`indicator-dot ${index === currentImageIndex ? 'active' : ''}`}
+                                    onClick={() => setCurrentImageIndex(index)}
+                                ></div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

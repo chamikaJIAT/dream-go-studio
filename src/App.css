@@ -1,1 +1,31 @@
-/* Removed Vite default styles to allow full-page booking form */
+/* General App Styles */
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Wrapper for public routes to offset the sidebar */
+.public-layout {
+    margin-left: 280px;
+    /* Width of the new sidebar */
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+    width: calc(100% - 280px);
+}
+
+@media (max-width: 1024px) {
+    .public-layout {
+        margin-left: 240px;
+        width: calc(100% - 240px);
+    }
+}
+
+@media (max-width: 768px) {
+    .public-layout {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 70px;
+        /* Account for the mobile top bar */
+    }
+}
