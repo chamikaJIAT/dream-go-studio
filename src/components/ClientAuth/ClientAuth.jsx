@@ -1,0 +1,255 @@
+import { useState, useContext } from 'react';
+import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { AuthContext } from '../../context/AuthContext';
+import './ClientAuth.css';
+
+export default function ClientAuth({ onAuthSuccess, onCancel }) {
+    const [isLoginView, setIsLoginView] = useState(true); // Toggle between Login and Signup
+
+    // Form states
+    const [name, setName] = useState('');
+    const [mobile, setMobile] = useState('');
+    const [nic, setNic] = useState('');
+    const [username, setUsername] = useState('');
+
+    // UI states
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Context
+    const { login } = useContext(AuthContext);
+
+    // After signup, we show the generated username to the user
+    // They must click "Continue" to actually log in.
+    const [generatedUsername, setGeneratedUsername] = useState('');
+
+    const toggleView = () => {
+        setIsLoginView(!isLoginView);
+        setError('');
+        setGeneratedUsername('');
+    };
+
+    const handleSignup = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            // Basic validation
+            if (!name || !mobile || !nic) {
+                throw new Error("All fields are required.");
+            }
+
+            // 1. Check if mobile or nic already exists
+            const qNic = query(collection(db, 'clients'), where('nic', '==', nic));
+            const qMobile = query(collection(db, 'clients'), where('mobile', '==', mobile));
+
+            const [nicSnap, mobileSnap] = await Promise.all([getDocs(qNic), getDocs(qMobile)]);
+
+            if (!nicSnap.empty) throw new Error("A user with this NIC already exists.");
+            if (!mobileSnap.empty) throw new Error("A user with this Mobile number already exists.");
+
+            // 2. Generate unique username
+            // Format: First word of name + random 4 digits (e.g., Alex_4921)
+            const firstName = name.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '');
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            const newUsername = `${firstName}_${randomNum}`;
+
+            // 3. Save to Firestore
+            const newClient = {
+                name,
+                mobile, // This also acts as the password
+                nic,
+                username: newUsername,
+                createdAt: serverTimestamp()
+            };
+
+            await addDoc(collection(db, 'clients'), newClient);
+
+            // 4. Show success screen with username
+            setGeneratedUsername(newUsername);
+
+            // Note: We don't automatically log them in here. 
+            // We force them to see their username first.
+
+        } catch (err) {
+            console.error("Signup Error:", err);
+            setError(err.message || "Failed to create account.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogin = async (e) => {
+        if (e) e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            let searchUser = username;
+            let searchPass = mobile;
+
+            // If auto-logging in after signup
+            if (generatedUsername) {
+                searchUser = generatedUsername;
+                searchPass = mobile; // mobile is still in state from signup form
+            }
+
+            if (!searchUser || !searchPass) {
+                throw new Error("Username and Mobile number are required to login.");
+            }
+
+            // Search Firebase for matching username & password(mobile)
+            const q = query(
+                collection(db, 'clients'),
+                where('username', '==', searchUser),
+                where('mobile', '==', searchPass)
+            );
+
+            const snap = await getDocs(q);
+
+            if (snap.empty) {
+                throw new Error("Invalid Username or Mobile Number.");
+            }
+
+            // Login successful
+            const userData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+
+            // Save to context/localStorage
+            login({
+                id: userData.id,
+                name: userData.name,
+                mobile: userData.mobile,
+                username: userData.username
+            });
+
+            // Callback to close modal/change view
+            if (onAuthSuccess) onAuthSuccess();
+
+        } catch (err) {
+            console.error("Login Error:", err);
+            setError(err.message || "Login failed.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    // If user just signed up, show them their generated username
+    if (generatedUsername) {
+        return (
+            <div className="client-auth-container generated-view">
+                <div className="auth-header text-center">
+                    <h2>Registration Successful! 🎉</h2>
+                    <p>Welcome to Dream Go Studio, {name}.</p>
+                </div>
+
+                <div className="generated-username-box">
+                    <p>Your unique login Username is:</p>
+                    <h3>{generatedUsername}</h3>
+                    <p className="notice">Please save this! You will need it alongside your mobile number to log in next time.</p>
+                </div>
+
+                <button
+                    className="auth-btn submit-btn"
+                    onClick={() => handleLogin()}
+                    disabled={loading}
+                >
+                    {loading ? 'Logging in...' : 'Log In & Continue'}
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="client-auth-container">
+            {onCancel && (
+                <button className="back-btn" onClick={onCancel}>← Back</button>
+            )}
+
+            <div className="auth-header">
+                <h2>{isLoginView ? 'Welcome Back!' : 'Create an Account'}</h2>
+                <p>
+                    {isLoginView
+                        ? 'Login with your Username and Mobile Number.'
+                        : 'Register to book your dream photography session.'}
+                </p>
+            </div>
+
+            {error && <div className="auth-error">{error}</div>}
+
+            {isLoginView ? (
+                /* LOGIN FORM */
+                <form onSubmit={handleLogin} className="auth-form">
+                    <div className="input-group">
+                        <label>Username</label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="e.g. Kamal_4582"
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label>Password (Mobile Number)</label>
+                        <input
+                            type="tel"
+                            value={mobile}
+                            onChange={(e) => setMobile(e.target.value)}
+                            placeholder="e.g. 0771234567"
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="auth-btn submit-btn" disabled={loading}>
+                        {loading ? 'Logging in...' : 'Log In'}
+                    </button>
+                    <p className="auth-footer">
+                        Don't have an account? <span onClick={toggleView}>Sign Up here</span>
+                    </p>
+                </form>
+            ) : (
+                /* SIGNUP FORM */
+                <form onSubmit={handleSignup} className="auth-form">
+                    <div className="input-group">
+                        <label>Full Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Your full name"
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label>NIC Number</label>
+                        <input
+                            type="text"
+                            value={nic}
+                            onChange={(e) => setNic(e.target.value)}
+                            placeholder="Your NIC"
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label>Mobile Number (Used as Password)</label>
+                        <input
+                            type="tel"
+                            value={mobile}
+                            onChange={(e) => setMobile(e.target.value)}
+                            placeholder="e.g. 0771234567"
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="auth-btn submit-btn" disabled={loading}>
+                        {loading ? 'Creating Account...' : 'Register'}
+                    </button>
+                    <p className="auth-footer">
+                        Already have an account? <span onClick={toggleView}>Log In here</span>
+                    </p>
+                </form>
+            )}
+        </div>
+    );
+}

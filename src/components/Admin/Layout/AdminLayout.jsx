@@ -1,9 +1,22 @@
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import './AdminLayout.css';
 
 export default function AdminLayout() {
     const location = useLocation();
     const navigate = useNavigate();
+    const [isOpen, setIsOpen] = useState(false);
+
+    // Close sidebar on mobile when route changes
+    useEffect(() => {
+        if (window.innerWidth <= 768) {
+            setIsOpen(false);
+        }
+    }, [location.pathname]);
+
+    const toggleMenu = () => {
+        setIsOpen(!isOpen);
+    };
 
     const handleLogout = () => {
         // Basic mock logout
@@ -20,7 +33,7 @@ export default function AdminLayout() {
     return (
         <div className="admin-layout-container">
             {/* Sidebar */}
-            <aside className="admin-sidebar">
+            <aside className={`admin-sidebar ${isOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
                     <h2>Dream Go<span>.</span></h2>
                     <span className="badge">Admin Hub</span>
@@ -46,15 +59,27 @@ export default function AdminLayout() {
                 </div>
             </aside>
 
+            {/* Overlay for mobile */}
+            {isOpen && <div className="admin-sidebar-overlay" onClick={toggleMenu}></div>}
+
             {/* Main Content Area */}
             <main className="admin-main-content">
                 <header className="admin-topbar">
-                    <div className="topbar-title">
-                        <h3>{navItems.find(i => location.pathname.includes(i.path))?.label || 'Dashboard'}</h3>
+                    <div className="topbar-left">
+                        <div className="admin-mobile-menu-btn" onClick={toggleMenu}>
+                            <div className={`hamburger ${isOpen ? 'open' : ''}`}>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                        <div className="topbar-title">
+                            <h3>{navItems.find(i => location.pathname.includes(i.path))?.label || 'Dashboard'}</h3>
+                        </div>
                     </div>
                     <div className="admin-profile">
                         <div className="avatar">A</div>
-                        <span>Admin User</span>
+                        <span className="profile-name">Admin User</span>
                     </div>
                 </header>
 

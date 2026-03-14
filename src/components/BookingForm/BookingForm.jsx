@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { AuthContext } from '../../context/AuthContext';
+import ClientAuth from '../ClientAuth/ClientAuth';
 import './BookingForm.css';
 
 // Fix for default marker icon in leaflet with react
@@ -46,6 +48,9 @@ const carouselImages = [
 ];
 
 export default function BookingForm() {
+    const { user } = useContext(AuthContext);
+    const [showAuthForm, setShowAuthForm] = useState(false);
+
     const [packages, setPackages] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
@@ -87,6 +92,18 @@ export default function BookingForm() {
         return () => clearInterval(timer);
     }, []);
 
+    // Auto-fill form data if user is logged in
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                name: user.name || '',
+                mobile: user.mobile || ''
+            }));
+            setShowAuthForm(false);
+        }
+    }, [user]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -121,11 +138,19 @@ export default function BookingForm() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!user) {
+            alert("Please log in to submit a booking.");
+            setShowAuthForm(true);
+            return;
+        }
+
         if (formData.name && formData.mobile && formData.selectedPackage && formData.hotelName) {
             try {
                 const pkgDetails = packages.find(p => p.id === formData.selectedPackage);
 
                 await addDoc(collection(db, 'bookings'), {
+                    customerId: user.id || null, // Link to the authenticated user
                     customerName: formData.name,
                     mobile: formData.mobile,
                     packageId: formData.selectedPackage,
@@ -138,7 +163,9 @@ export default function BookingForm() {
 
                 setSubmitted(true);
                 setTimeout(() => setSubmitted(false), 5000);
-                setFormData({ name: '', mobile: '', selectedPackage: '', hotelName: '' });
+
+                // Keep name and mobile intact since they are tied to account
+                setFormData(prev => ({ ...prev, selectedPackage: '', hotelName: '' }));
                 setLocation({ lat: 6.9271, lng: 79.8612 });
             } catch (err) {
                 console.error('Error submitting booking:', err);
@@ -151,152 +178,180 @@ export default function BookingForm() {
         <div className="booking-container">
             <div className="booking-wrapper">
 
-                {/* Left Side: Form */}
+                {/* Left Side: Form or Auth */}
                 <div className="booking-form-section scrollable-section">
-                    <div className="booking-header">
-                        <h2>Book Your Session</h2>
-                        <p>Capture your perfect moments with our premium photography packages.</p>
-                    </div>
 
-                    {submitted && (
-                        <div className="success-message">
-                            Thanks! Your booking request has been received.
+                    {showAuthForm && !user ? (
+                        <div className="auth-wrapper">
+                            <ClientAuth
+                                onAuthSuccess={() => setShowAuthForm(false)}
+                                onCancel={() => setShowAuthForm(false)}
+                            />
+                        </div>
+                    ) : !user ? (
+                        <div className="pre-booking-state">
+                            <div className="booking-header">
+                                <h2>Book Your Session</h2>
+                                <p>Join Dream Go Studio to reserve your perfect moment.</p>
+                            </div>
+
+                            <div className="login-prompt">
+                                <h3>You must be registered to make a booking</h3>
+                                <p>Quickly sign up or log in to continue booking your photography package.</p>
+                                <button className="submit-button book-now-btn" onClick={() => setShowAuthForm(true)}>
+                                    Register / Log In Now
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="booking-state">
+                            <div className="booking-header">
+                                <h2>Book Your Session</h2>
+                                <p>Welcome back, {user.name.split(' ')[0]}! Let's get your event scheduled.</p>
+                            </div>
+
+                            {submitted && (
+                                <div className="success-message">
+                                    Thanks! Your booking request has been received.
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit} className="booking-form">
+                                <div className="input-group">
+                                    <label htmlFor="name">Full Name</label>
+                                    <input
+                                        type="text"
+                                        id="name"
+                                        name="name"
+                                        placeholder="Enter your full name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="mobile">Mobile Number</label>
+                                    <input
+                                        type="tel"
+                                        id="mobile"
+                                        name="mobile"
+                                        placeholder="e.g. 077 123 4567"
+                                        value={formData.mobile}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="hotelName">Hotel / Event Venue Name</label>
+                                    <input
+                                        type="text"
+                                        id="hotelName"
+                                        name="hotelName"
+                                        placeholder="e.g. Shangri-La, Colombo"
+                                        value={formData.hotelName}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="input-group map-group">
+                                    <label>Select Precise Location</label>
+
+                                    {/* Location Search Input */}
+                                    <div className="location-search-container">
+                                        <input
+                                            type="text"
+                                            placeholder="Search for a location (e.g. Galle Face)"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="location-search-input"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSearch();
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleSearch}
+                                            className="search-button"
+                                            disabled={isSearching}
+                                        >
+                                            {isSearching ? 'Searching...' : 'Search'}
+                                        </button>
+
+                                        {/* Search Results Dropdown */}
+                                        {searchResults.length > 0 && (
+                                            <ul className="search-results-dropdown">
+                                                {searchResults.map((result) => (
+                                                    <li
+                                                        key={result.place_id}
+                                                        onClick={() => selectSearchResult(result)}
+                                                        className="search-result-item"
+                                                    >
+                                                        {result.display_name}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+
+                                    <p className="map-help-text">Or click on the map to place a pin at your exact event location</p>
+                                    <div className="map-wrapper">
+                                        <MapContainer center={[6.9271, 79.8612]} zoom={11} scrollWheelZoom={true} className="leaflet-map">
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <MapUpdater center={[location.lat, location.lng]} />
+                                            <LocationMarker position={location} setPosition={setLocation} />
+                                        </MapContainer>
+                                    </div>
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="selectedPackage">Select Package</label>
+                                    <div className="custom-select-wrapper">
+                                        <select
+                                            id="selectedPackage"
+                                            name="selectedPackage"
+                                            value={formData.selectedPackage}
+                                            onChange={handleChange}
+                                            required
+                                            className="package-dropdown"
+                                        >
+                                            <option value="" disabled>Select a package...</option>
+                                            {packages.map((pkg) => (
+                                                <option key={pkg.id} value={pkg.id}>
+                                                    {pkg.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="select-arrow">▼</div>
+                                    </div>
+
+                                    {formData.selectedPackage && packages.find(p => p.id === formData.selectedPackage) && (
+                                        <div className="selected-package-details">
+                                            <div className="pkg-price-badge">
+                                                {packages.find(p => p.id === formData.selectedPackage).price}
+                                            </div>
+                                            <p className="pkg-desc">
+                                                {packages.find(p => p.id === formData.selectedPackage).description}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button type="submit" className="submit-button">
+                                    Confirm Booking
+                                </button>
+                            </form>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="booking-form">
-                        <div className="input-group">
-                            <label htmlFor="name">Full Name</label>
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                placeholder="Enter your full name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="input-group">
-                            <label htmlFor="mobile">Mobile Number</label>
-                            <input
-                                type="tel"
-                                id="mobile"
-                                name="mobile"
-                                placeholder="e.g. 077 123 4567"
-                                value={formData.mobile}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="input-group">
-                            <label htmlFor="hotelName">Hotel / Event Venue Name</label>
-                            <input
-                                type="text"
-                                id="hotelName"
-                                name="hotelName"
-                                placeholder="e.g. Shangri-La, Colombo"
-                                value={formData.hotelName}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="input-group map-group">
-                            <label>Select Precise Location</label>
-
-                            {/* Location Search Input */}
-                            <div className="location-search-container">
-                                <input
-                                    type="text"
-                                    placeholder="Search for a location (e.g. Galle Face)"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="location-search-input"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleSearch();
-                                        }
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleSearch}
-                                    className="search-button"
-                                    disabled={isSearching}
-                                >
-                                    {isSearching ? 'Searching...' : 'Search'}
-                                </button>
-
-                                {/* Search Results Dropdown */}
-                                {searchResults.length > 0 && (
-                                    <ul className="search-results-dropdown">
-                                        {searchResults.map((result) => (
-                                            <li
-                                                key={result.place_id}
-                                                onClick={() => selectSearchResult(result)}
-                                                className="search-result-item"
-                                            >
-                                                {result.display_name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-
-                            <p className="map-help-text">Or click on the map to place a pin at your exact event location</p>
-                            <div className="map-wrapper">
-                                <MapContainer center={[6.9271, 79.8612]} zoom={11} scrollWheelZoom={true} className="leaflet-map">
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-                                    <MapUpdater center={[location.lat, location.lng]} />
-                                    <LocationMarker position={location} setPosition={setLocation} />
-                                </MapContainer>
-                            </div>
-                        </div>
-
-                        <div className="input-group">
-                            <label htmlFor="selectedPackage">Select Package</label>
-                            <div className="custom-select-wrapper">
-                                <select
-                                    id="selectedPackage"
-                                    name="selectedPackage"
-                                    value={formData.selectedPackage}
-                                    onChange={handleChange}
-                                    required
-                                    className="package-dropdown"
-                                >
-                                    <option value="" disabled>Select a package...</option>
-                                    {packages.map((pkg) => (
-                                        <option key={pkg.id} value={pkg.id}>
-                                            {pkg.title}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="select-arrow">▼</div>
-                            </div>
-
-                            {formData.selectedPackage && packages.find(p => p.id === formData.selectedPackage) && (
-                                <div className="selected-package-details">
-                                    <div className="pkg-price-badge">
-                                        {packages.find(p => p.id === formData.selectedPackage).price}
-                                    </div>
-                                    <p className="pkg-desc">
-                                        {packages.find(p => p.id === formData.selectedPackage).description}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        <button type="submit" className="submit-button">
-                            Confirm Booking
-                        </button>
-                    </form>
                 </div>
 
                 {/* Right Side: Carousel Image Area */}

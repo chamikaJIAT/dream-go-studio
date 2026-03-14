@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logoWhite from '../../logo/DreamGO -White.png';
+import { AuthContext } from '../../context/AuthContext';
 import './Navbar.css';
 
 export default function Navbar() {
+    const { user, logout } = useContext(AuthContext);
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
 
@@ -58,6 +60,21 @@ export default function Navbar() {
                             </Link>
                         ))}
                     </div>
+
+                    {user && (
+                        <div className="sidebar-user-section">
+                            <div className="user-profile">
+                                <div className="user-avatar">{user.name.charAt(0)}</div>
+                                <div className="user-info">
+                                    <span className="user-name">{user.name.split(' ')[0]}</span>
+                                    <span className="user-username">@{user.username}</span>
+                                </div>
+                            </div>
+                            <button className="user-logout-btn" onClick={logout}>
+                                Logout
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="sidebar-footer">

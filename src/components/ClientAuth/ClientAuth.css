@@ -1,0 +1,166 @@
+.client-auth-container {
+    width: 100%;
+    margin: 0 auto;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.auth-header {
+    margin-bottom: 2rem;
+}
+
+.auth-header h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-header p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+}
+
+.auth-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+/* Same input styling as booking form */
+.auth-form .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.auth-form label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #8ec5fc;
+    box-shadow: 0 0 0 3px rgba(142, 197, 252, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-btn {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(118, 75, 162, 0.6);
+}
+
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-footer {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.auth-footer span {
+    color: #8ec5fc;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.auth-footer span:hover {
+    text-decoration: underline;
+}
+
+/* Generated Username View */
+.generated-view {
+    text-align: center;
+}
+
+.generated-username-box {
+    background: rgba(142, 197, 252, 0.1);
+    border: 1px dashed rgba(142, 197, 252, 0.4);
+    padding: 2rem;
+    border-radius: 16px;
+    margin: 2rem 0;
+}
+
+.generated-username-box p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 0.5rem 0;
+}
+
+.generated-username-box h3 {
+    font-size: 2.5rem;
+    color: #8ec5fc;
+    margin: 0 0 1rem 0;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.generated-username-box .notice {
+    color: #f87171;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    cursor: pointer;
+    margin-bottom: 2rem;
+    padding: 0;
+    font-family: inherit;
+}
+
+.back-btn:hover {
+    color: #fff;
+}
