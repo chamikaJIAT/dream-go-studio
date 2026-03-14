@@ -413,3 +413,79 @@ select.package-dropdown option {
     font-size: 0.9rem;
     line-height: 1.5;
 }
+
+/* --- Location Search Styles --- */
+.location-search-container {
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.location-search-input {
+    flex: 1;
+    padding: 0.8rem 1rem !important; /* Override general input padding for a slightly tighter fit */
+}
+
+.search-button {
+    padding: 0 1.5rem;
+    background: rgba(142, 197, 252, 0.2);
+    border: 1px solid rgba(142, 197, 252, 0.4);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.search-button:hover:not(:disabled) {
+    background: rgba(142, 197, 252, 0.4);
+}
+
+.search-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0;
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it stays above the map */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.search-results-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-results-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(142, 197, 252, 0.5);
+    border-radius: 4px;
+}
+
+.search-result-item {
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    transition: background 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: rgba(142, 197, 252, 0.15);
+}

@@ -27,6 +27,17 @@ function LocationMarker({ position, setPosition }) {
     );
 }
 
+// Component to programmatically update map center
+function MapUpdater({ center }) {
+    const map = useMapEvents({});
+    useEffect(() => {
+        if (center) {
+            map.flyTo(center, 13);
+        }
+    }, [center, map]);
+    return null;
+}
+
 export default function BookingForm() {
     const [packages, setPackages] = useState([]);
     const [formData, setFormData] = useState({
@@ -39,6 +50,11 @@ export default function BookingForm() {
     // Default to Colombo center
     const [location, setLocation] = useState({ lat: 6.9271, lng: 79.8612 });
     const [submitted, setSubmitted] = useState(false);
+    
+    // Search specific states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
         const unsub = onSnapshot(collection(db, 'packages'), (snapshot) => {
@@ -55,6 +71,30 @@ export default function BookingForm() {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
+        
+        setIsSearching(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`);
+            const data = await response.json();
+            setSearchResults(data);
+        } catch (error) {
+            console.error('Error searching location:', error);
+            // Optionally could show an alert here
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const selectSearchResult = (result) => {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        setLocation({ lat, lng });
+        setSearchResults([]);
+        setSearchQuery(result.display_name); // Set input to selected name
     };
 
     const handleSubmit = async (e) => {
@@ -145,13 +185,55 @@ export default function BookingForm() {
 
                         <div className="input-group map-group">
                             <label>Select Precise Location</label>
-                            <p className="map-help-text">Click on the map to place a pin at your exact event location</p>
+                            
+                            {/* Location Search Input */}
+                            <div className="location-search-container">
+                                <input
+                                    type="text"
+                                    placeholder="Search for a location (e.g. Galle Face)"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="location-search-input"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSearch();
+                                        }
+                                    }}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={handleSearch} 
+                                    className="search-button"
+                                    disabled={isSearching}
+                                >
+                                    {isSearching ? 'Searching...' : 'Search'}
+                                </button>
+                                
+                                {/* Search Results Dropdown */}
+                                {searchResults.length > 0 && (
+                                    <ul className="search-results-dropdown">
+                                        {searchResults.map((result) => (
+                                            <li 
+                                                key={result.place_id} 
+                                                onClick={() => selectSearchResult(result)}
+                                                className="search-result-item"
+                                            >
+                                                {result.display_name}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
+                            <p className="map-help-text">Or click on the map to place a pin at your exact event location</p>
                             <div className="map-wrapper">
                                 <MapContainer center={[6.9271, 79.8612]} zoom={11} scrollWheelZoom={true} className="leaflet-map">
                                     <TileLayer
                                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     />
+                                    <MapUpdater center={[location.lat, location.lng]} />
                                     <LocationMarker position={location} setPosition={setLocation} />
                                 </MapContainer>
                             </div>
