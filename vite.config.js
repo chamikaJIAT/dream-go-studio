@@ -10,4 +10,5 @@ export default defineConfig({
       },
     }),
   ],
+  base: "/dream-go-studio/", // මෙන්න මේ පේළිය මෙතනට එන්න ඕනේ
 })
