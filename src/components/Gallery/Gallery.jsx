@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useNavigate } from 'react-router-dom';
+import Breadcrumbs from './Breadcrumbs';
 import './Gallery.css';
 
 export default function Gallery() {
-    const [galleryImages, setGalleryImages] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'categories'), orderBy('createdAt', 'desc'));
         const unsub = onSnapshot(q, (snapshot) => {
-            const gData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setGalleryImages(gData);
+            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
         return () => unsub();
     }, []);
@@ -19,21 +21,27 @@ export default function Gallery() {
         <div className="gallery-container">
             <div className="gallery-header">
                 <h1>Our Masterpieces</h1>
-                <p>A glimpse into the beautiful memories we've captured over the years.</p>
+                <p>Explore beautiful memories, sorted by category.</p>
+                <Breadcrumbs paths={[{ label: 'Home', url: '/' }, { label: 'Gallery', url: null }]} />
             </div>
 
             <div className="gallery-grid">
-                {galleryImages.map((img) => (
-                    <div key={img.id} className="gallery-item">
-                        <img src={img.url} alt={img.title || 'Studio moment'} loading="lazy" />
-                        <div className="item-overlay">
-                            <span className="category-badge">{img.category}</span>
-                            <h3>{img.title || img.category}</h3>
+                {categories.map((cat) => (
+                    <div key={cat.id} className="gallery-card" onClick={() => navigate(`/gallery/${cat.id}`)}>
+                        <div className="card-image">
+                            {cat.coverUrl ? (
+                                <img src={cat.coverUrl} alt={cat.name} loading="lazy" />
+                            ) : (
+                                <div className="placeholder-bg">📁</div>
+                            )}
+                        </div>
+                        <div className="card-overlay">
+                            <h3>{cat.name}</h3>
                         </div>
                     </div>
                 ))}
-                {galleryImages.length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                {categories.length === 0 && (
+                    <div className="empty-gallery">
                         Our gallery is currently being curated. Come back soon!
                     </div>
                 )}

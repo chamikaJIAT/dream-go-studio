@@ -28,6 +28,7 @@ export default function AdminLayout() {
         { path: '/admin/bookings', icon: '📅', label: 'Bookings' },
         { path: '/admin/gallery', icon: '🖼️', label: 'Gallery' },
         { path: '/admin/packages', icon: '📦', label: 'Packages' },
+        { path: '/admin/messages', icon: '💬', label: 'Messages' },
     ];
 
     return (

@@ -23,6 +23,8 @@ export default function Navbar() {
     const navLinks = [
         { path: '/', label: 'Booking', icon: '📅' },
         { path: '/gallery', label: 'Gallery', icon: '🖼️' },
+        { path: '/about', label: 'About Us', icon: 'ℹ️' },
+        { path: '/contact', label: 'Contact Us', icon: '📞' }
     ];
 
     return (
