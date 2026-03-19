@@ -11,10 +11,10 @@ export default function Footer() {
                     <h3>Dream Go Studio</h3>
                     <p>Crafting memories that last a lifetime. Premium photography, videography, and printing services based in Galle, Sri Lanka.</p>
                     <div className="footer-socials">
-                        <a href="https://www.facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook">
+                        <a href="https://www.facebook.com/Dream-GO-100308695540295/" target="_blank" rel="noreferrer" aria-label="Facebook">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                         </a>
-                        <a href="https://www.instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram">
+                        <a href="https://www.instagram.com/dreamgo_buddhika_sandaruwan_" target="_blank" rel="noreferrer" aria-label="Instagram">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
                         </a>
                         <a href="https://wa.me/94768634775" target="_blank" rel="noreferrer" aria-label="WhatsApp">
@@ -36,13 +36,13 @@ export default function Footer() {
                 <div className="footer-links-col">
                     <h4>Services</h4>
                     <ul>
-                        <li><span>Wedding Photography</span></li>
-                        <li><span>Event Photography</span></li>
-                        <li><span>Birthday Photography</span></li>
-                        <li><span>Videography</span></li>
-                        <li><span>Album Designing</span></li>
-                        <li><span>Picture Framing</span></li>
-                        <li><span>Printing Services</span></li>
+                        <li><span className="service-item">› Wedding Photography</span></li>
+                        <li><span className="service-item">› Event Photography</span></li>
+                        <li><span className="service-item">› Birthday Photography</span></li>
+                        <li><span className="service-item">› Videography</span></li>
+                        <li><span className="service-item">› Album Designing</span></li>
+                        <li><span className="service-item">› Picture Framing</span></li>
+                        <li><span className="service-item">› Printing Services</span></li>
                     </ul>
                 </div>
 
@@ -55,15 +55,19 @@ export default function Footer() {
                         </li>
                         <li>
                             <span className="fc-icon">📞</span>
-                            <a href="tel:+94768634775">076 863 4775</a>
+                            <div className="footer-phones">
+                                <a href="tel:+94768634775">076 863 4775</a>
+                                <span className="phone-divider">|</span>
+                                <a href="tel:+94724980088">072 498 0088</a>
+                            </div>
                         </li>
                         <li>
                             <span className="fc-icon">📍</span>
-                            <span>Thalagaha Junction, Akmeemana, Galle</span>
+                            <a href="https://maps.google.com/?q=Thalagaha+Junction,+Akmeemana,+Galle,+Sri+Lanka" target="_blank" rel="noreferrer">Thalagaha Junction, Akmeemana, Galle</a>
                         </li>
                         <li>
                             <span className="fc-icon">🕐</span>
-                            <span>Mon – Sat: 9 AM – 6 PM</span>
+                            <span>Mon – Sat: 9 AM – 4:30 PM</span>
                         </li>
                     </ul>
                 </div>
@@ -71,7 +75,7 @@ export default function Footer() {
 
             <div className="footer-bottom">
                 <p>© {currentYear} Dream Go Studio. All rights reserved.</p>
-                <p>Designed with ❤️ in Galle, Sri Lanka.</p>
+                <p>Created by <span className="footer-creator">Chamika Wickramage</span></p>
             </div>
         </footer>
     );

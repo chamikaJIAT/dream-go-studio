@@ -41,7 +41,7 @@ export default function ContactUs() {
         {
             icon: "📞",
             label: "Phone",
-            value: "076 863 4775",
+            value: "076 863 4775 / 072 498 0088",
             link: "tel:+94768634775",
         },
         {
@@ -53,7 +53,7 @@ export default function ContactUs() {
         {
             icon: "🕐",
             label: "Working Hours",
-            value: "Mon – Sat: 9:00 AM – 6:00 PM",
+            value: "Mon – Sat\n9:00 AM (Open)\n4:30 PM (Close)",
             link: null,
         },
     ];

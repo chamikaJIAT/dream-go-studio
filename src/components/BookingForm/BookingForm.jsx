@@ -191,7 +191,7 @@ export default function BookingForm() {
                     ) : !user ? (
                         <div className="pre-booking-state">
                             <div className="booking-header">
-                                <h2>Book Your Session</h2>
+                                <h2><span className="h2-accent">✨</span> Book Your Session</h2>
                                 <p>Join Dream Go Studio to reserve your perfect moment.</p>
                             </div>
 
@@ -206,7 +206,7 @@ export default function BookingForm() {
                     ) : (
                         <div className="booking-state">
                             <div className="booking-header">
-                                <h2>Book Your Session</h2>
+                                <h2><span className="h2-accent">✨</span> Book Your Session</h2>
                                 <p>Welcome back, {user.name.split(' ')[0]}! Let's get your event scheduled.</p>
                             </div>
 
@@ -369,7 +369,7 @@ export default function BookingForm() {
                     <div className="carousel-overlay"></div>
 
                     <div className="image-overlay-content">
-                        <h1>Dream Go Studio</h1>
+                        <h1>DREAM GO STUDIO</h1>
                         <p className="tagline">Where moments become eternal memories</p>
 
                         {/* Carousel Indicators */}

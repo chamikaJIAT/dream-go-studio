@@ -93,6 +93,9 @@
     font-size: 1rem;
     line-height: 1.5;
     transition: color 0.2s;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-line;
 }
 
 .contact-info-card a:hover {
@@ -201,13 +204,45 @@
 }
 
 @media (max-width: 900px) {
+    .contact-container {
+        padding: 80px 1.5rem 3rem 1.5rem;
+    }
     .contact-form-section {
         grid-template-columns: 1fr;
+        gap: 2rem;
     }
     .form-row {
         grid-template-columns: 1fr;
     }
     .contact-header h1 {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
+    }
+    .contact-form {
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .contact-info-grid {
+        grid-template-columns: 1fr; /* Full width cards on mobile */
+    }
+    .contact-info-card {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .contact-container {
+        padding: 70px 1rem 2rem 1rem;
+    }
+    .contact-header h1 {
+        font-size: 2rem;
+    }
+    .contact-form h2 {
+        font-size: 1.5rem;
+    }
+    .btn-submit {
+        width: 100%; /* Full width button on small phones */
+        align-self: center;
     }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import logoWhite from '../../../logo/DreamGO -White.png';
 import './AdminLayout.css';
 
 export default function AdminLayout() {
@@ -37,7 +38,7 @@ export default function AdminLayout() {
             {/* Sidebar */}
             <aside className={`admin-sidebar ${isOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <h2>Dream Go<span>.</span></h2>
+                    <img src={logoWhite} alt="Dream Go Logo" className="admin-logo" />
                     <span className="badge">Admin Hub</span>
                 </div>
 

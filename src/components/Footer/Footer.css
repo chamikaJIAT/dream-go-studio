@@ -90,6 +90,13 @@
     color: #8ec5fc;
 }
 
+.service-item {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    cursor: default;
+    user-select: none;
+}
+
 .footer-contact-col ul li {
     display: flex;
     align-items: flex-start;
@@ -115,6 +122,18 @@
     color: #8ec5fc;
 }
 
+.footer-phones {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.phone-divider {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 0.8rem;
+}
+
 .footer-bottom {
     max-width: 1400px;
     margin: 0 auto;
@@ -130,6 +149,14 @@
 .footer-bottom p {
     margin: 0;
     font-size: 0.9rem;
+}
+
+.footer-creator {
+    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
 }
 
 @media (max-width: 1024px) {

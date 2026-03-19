@@ -1,9 +1,4 @@
-/* General App Styles */
-body {
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-    width: 100vw;
+html {
     box-sizing: border-box;
 }
 
@@ -11,6 +6,14 @@ body {
 *::before,
 *::after {
     box-sizing: inherit;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100%; /* Better than 100vw to avoid scrollbar horizontal pull */
+    background: #1a1a2e; /* Global dark theme background */
 }
 
 /* Wrapper for public routes to offset the sidebar */
@@ -35,5 +38,13 @@ body {
         width: 100%;
         margin-top: 70px;
         /* Account for the mobile top bar */
+        padding: 0; /* Clear any residual side padding */
+    }
+}
+
+/* Fix for small phones */
+@media (max-width: 480px) {
+    .public-layout {
+        margin-top: 60px; /* Tighter top bar for very small screens */
     }
 }

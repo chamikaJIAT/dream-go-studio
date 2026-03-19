@@ -24,16 +24,12 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.sidebar-header h2 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem 0;
-    color: #fff;
-    letter-spacing: -0.5px;
-}
-
-.sidebar-header h2 span {
-    color: #38bdf8;
+.admin-logo {
+    height: 65px;
+    width: auto;
+    object-fit: contain;
+    margin-bottom: 1.5rem;
+    display: block;
 }
 
 .sidebar-header .badge {
