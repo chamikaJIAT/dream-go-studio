@@ -19,8 +19,9 @@ export default function AdminLayout() {
     };
 
     const handleLogout = () => {
-        // Basic mock logout
-        navigate('/admin/login');
+        if (window.confirm('Are you sure you want to logout?')) {
+            navigate('/admin/login');
+        }
     };
 
     const navItems = [
@@ -81,6 +82,9 @@ export default function AdminLayout() {
                     <div className="admin-profile">
                         <div className="avatar">A</div>
                         <span className="profile-name">Admin User</span>
+                        <button className="topbar-logout-btn" onClick={handleLogout} title="Logout">
+                            🚪
+                        </button>
                     </div>
                 </header>
 
