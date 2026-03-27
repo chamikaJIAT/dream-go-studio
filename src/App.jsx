@@ -11,6 +11,7 @@ import AdminLogin from './components/Admin/Login/AdminLogin'
 import AdminLayout from './components/Admin/Layout/AdminLayout'
 import AdminDashboard from './components/Admin/Dashboard/AdminDashboard'
 import AdminBookings from './components/Admin/Bookings/AdminBookings'
+import AdminOldBookings from './components/Admin/OldBookings/AdminOldBookings'
 import AdminPackages from './components/Admin/Packages/AdminPackages'
 import AdminGallery from './components/Admin/Gallery/AdminGallery'
 import AdminMessages from './components/Admin/Messages/AdminMessages'
@@ -37,6 +38,7 @@ function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="old-bookings" element={<AdminOldBookings />} />
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="packages" element={<AdminPackages />} />
             <Route path="messages" element={<AdminMessages />} />

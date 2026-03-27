@@ -28,6 +28,7 @@ export default function AdminLayout() {
     const navItems = [
         { path: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
         { path: '/admin/bookings', icon: '📅', label: 'Bookings' },
+        { path: '/admin/old-bookings', icon: '⏳', label: 'Old Bookings' },
         { path: '/admin/gallery', icon: '🖼️', label: 'Gallery' },
         { path: '/admin/packages', icon: '📦', label: 'Packages' },
         { path: '/admin/messages', icon: '💬', label: 'Messages' },
