@@ -32,6 +32,7 @@ export default function AdminLayout() {
         { path: '/admin/gallery', icon: '🖼️', label: 'Gallery' },
         { path: '/admin/packages', icon: '📦', label: 'Packages' },
         { path: '/admin/messages', icon: '💬', label: 'Messages' },
+        { path: '/admin/users', icon: '👥', label: 'Users' },
     ];
 
     return (

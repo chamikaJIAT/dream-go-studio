@@ -15,6 +15,7 @@ import AdminOldBookings from './components/Admin/OldBookings/AdminOldBookings'
 import AdminPackages from './components/Admin/Packages/AdminPackages'
 import AdminGallery from './components/Admin/Gallery/AdminGallery'
 import AdminMessages from './components/Admin/Messages/AdminMessages'
+import AdminUsers from './components/Admin/Users/AdminUsers'
 import { AuthProvider } from './context/AuthContext'
 import './App.css'
 
@@ -42,6 +43,7 @@ function App() {
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="packages" element={<AdminPackages />} />
             <Route path="messages" element={<AdminMessages />} />
+            <Route path="users" element={<AdminUsers />} />
           </Route>
         </Routes>
       </Router>
