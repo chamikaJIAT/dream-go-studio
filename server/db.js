@@ -2,14 +2,15 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const dbConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '1234'
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    port: process.env.MYSQLPORT || 3306
 };
 
 const pool = mysql.createPool({
     ...dbConfig,
-    database: 'dream_go_studio',
+    database: process.env.MYSQLDATABASE,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18,9 +19,9 @@ const pool = mysql.createPool({
 async function initializeDB() {
     try {
         const connection = await mysql.createConnection(dbConfig);
-        await connection.query(`CREATE DATABASE IF NOT EXISTS dream_go_studio;`);
-        console.log("Database 'dream_go_studio' checked/created.");
-        await connection.query(`USE dream_go_studio;`);
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.MYSQLDATABASE}\`;`);
+        console.log(`Database '${process.env.MYSQLDATABASE}' checked/created.`);
+        await connection.query(`USE \`${process.env.MYSQLDATABASE}\`;`);
 
         // --- CREATE ALL TABLES IF THEY DON'T EXIST ---
 
@@ -181,9 +182,14 @@ async function initializeDB() {
         // Insert default superadmin (IGNORE duplicates)
         await connection.query(
             "INSERT IGNORE INTO admins (name, username, password, role) VALUES (?, ?, ?, ?)",
-            ['System Admin', 'admin', '1234', 'superadmin']
+            [
+                process.env.ADMIN_NAME || 'System Admin',
+                process.env.ADMIN_USERNAME || 'admin',
+                process.env.ADMIN_PASSWORD || '1234',
+                'superadmin'
+            ]
         );
-        console.log("Default admin created: admin / 1234");
+        console.log(`Default admin created: ${process.env.ADMIN_USERNAME || 'admin'} / ${process.env.ADMIN_PASSWORD || '1234'}`);
 
         connection.end();
         console.log("--- MySQL Initialization Complete ---");
