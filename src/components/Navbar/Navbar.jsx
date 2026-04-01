@@ -61,6 +61,15 @@ export default function Navbar() {
                                 {link.label}
                             </Link>
                         ))}
+                        {user && (
+                            <Link
+                                to="/my-bookings"
+                                className={`sidebar-link ${location.pathname === '/my-bookings' ? 'active' : ''}`}
+                            >
+                                <span className="icon">🧾</span>
+                                My Bookings
+                            </Link>
+                        )}
                     </div>
 
                     {user && (

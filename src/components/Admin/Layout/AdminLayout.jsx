@@ -7,6 +7,17 @@ export default function AdminLayout() {
     const location = useLocation();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const [adminUser, setAdminUser] = useState(null);
+
+    // Initial load: parse user from localstorage
+    useEffect(() => {
+        const storedAdmin = localStorage.getItem('adminUser');
+        if (storedAdmin) {
+            setAdminUser(JSON.parse(storedAdmin));
+        } else {
+            navigate('/admin/login');
+        }
+    }, [navigate]);
 
     // Close sidebar on mobile when route changes
     useEffect(() => {
@@ -21,19 +32,31 @@ export default function AdminLayout() {
 
     const handleLogout = () => {
         if (window.confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('adminUser');
             navigate('/admin/login');
         }
     };
 
-    const navItems = [
-        { path: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
-        { path: '/admin/bookings', icon: '📅', label: 'Bookings' },
-        { path: '/admin/old-bookings', icon: '⏳', label: 'Old Bookings' },
-        { path: '/admin/gallery', icon: '🖼️', label: 'Gallery' },
-        { path: '/admin/packages', icon: '📦', label: 'Packages' },
-        { path: '/admin/messages', icon: '💬', label: 'Messages' },
-        { path: '/admin/users', icon: '👥', label: 'Users' },
+    const allNavItems = [
+        { path: '/admin/dashboard', icon: '📊', label: 'Dashboard', id: 'dashboard' },
+        { path: '/admin/bookings', icon: '📅', label: 'Bookings', id: 'bookings' },
+        { path: '/admin/old-bookings', icon: '⏳', label: 'Old Bookings', id: 'old-bookings' },
+        { path: '/admin/gallery', icon: '🖼️', label: 'Gallery', id: 'gallery' },
+        { path: '/admin/packages', icon: '📦', label: 'Packages', id: 'packages' },
+        { path: '/admin/messages', icon: '💬', label: 'Messages', id: 'messages' },
+        { path: '/admin/users', icon: '👥', label: 'Users', id: 'users' },
+        { path: '/admin/staff', icon: '👤', label: 'Staff Directory', id: 'staff' },
+        { path: '/admin/employees', icon: '🛡️', label: 'Admin Accounts', id: 'employees', superOnly: true },
+        { path: '/admin/logs', icon: '📜', label: 'Activity Logs', id: 'logs', superOnly: true },
     ];
+
+    // Filter based on user's role and permissions
+    const navItems = allNavItems.filter(item => {
+        if (!adminUser) return false;
+        if (adminUser.role === 'superadmin') return true;
+        if (item.superOnly) return false;
+        return adminUser.permissions?.includes(item.id);
+    });
 
     return (
         <div className="admin-layout-container">
@@ -83,8 +106,9 @@ export default function AdminLayout() {
                         </div>
                     </div>
                     <div className="admin-profile">
-                        <div className="avatar">A</div>
-                        <span className="profile-name">Admin User</span>
+                        <div className="avatar">{adminUser?.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}</div>
+                        <span className="profile-name">{adminUser?.name || 'Admin User'}</span>
+                        <div style={{fontSize: '0.7rem', color: '#94a3b8', marginLeft: 'auto', marginRight:'1rem', textTransform:'uppercase'}}>{adminUser?.role === 'superadmin' ? 'Super Admin' : 'Admin'}</div>
                         <button className="topbar-logout-btn" onClick={handleLogout} title="Logout">
                             🚪
                         </button>

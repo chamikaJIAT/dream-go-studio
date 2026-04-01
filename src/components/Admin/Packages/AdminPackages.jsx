@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { apiCall } from '../../../api';
 import './AdminPackages.css';
 
 export default function AdminPackages() {
     const [packages, setPackages] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
-    const [currentPackage, setCurrentPackage] = useState({ id: '', title: '', price: '', description: '' });
+    const [currentPackage, setCurrentPackage] = useState({ id: '', title: '', price: '', category: 'Wedding', description: '' });
+    const admin = JSON.parse(localStorage.getItem('user') || '{}');
 
-    // Fetch real-time data from Firestore
+    // Fetch real-time data from API
+    const fetchPackages = async () => {
+        try {
+            const res = await apiCall('/packages');
+            setPackages(res.packages);
+        } catch (err) {
+            console.error('Failed to fetch packages', err);
+        }
+    };
+
     useEffect(() => {
-        const unsub = onSnapshot(collection(db, 'packages'), (snapshot) => {
-            const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPackages(pData);
-        });
-        return () => unsub();
+        fetchPackages();
     }, []);
 
     const handleInputChange = (e) => {
@@ -25,40 +30,33 @@ export default function AdminPackages() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Optimistic UI update
         const pkgDataToSave = {
             title: currentPackage.title,
             price: currentPackage.price,
+            category: currentPackage.category,
             description: currentPackage.description,
-            createdAt: new Date().toISOString()
+            adminId: admin.id,
+            adminName: admin.name,
+            adminRole: admin.role
         };
 
         try {
             if (isEditing) {
-                // Optimistic Local State Update
-                setPackages(prev => prev.map(p => p.id === currentPackage.id ? { id: currentPackage.id, ...pkgDataToSave } : p));
-
-                // Firestore Async Update
-                const pkgRef = doc(db, 'packages', currentPackage.id);
-                updateDoc(pkgRef, pkgDataToSave).catch(err => console.error('Silent Update Error:', err));
+                await apiCall(`/packages/${currentPackage.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(pkgDataToSave)
+                });
             } else {
-                // Optimistic Local State Update
-                const tempId = 'temp-' + Date.now();
-                setPackages(prev => [...prev, { id: tempId, ...pkgDataToSave }]);
-
-                // Firestore Async Add
-                addDoc(collection(db, 'packages'), pkgDataToSave)
-                    .then(docRef => {
-                        console.log("Written successfully to Firestore with ID: " + docRef.id);
-                        // Replace temp ID with real ID
-                        setPackages(prev => prev.map(p => p.id === tempId ? { id: docRef.id, ...pkgDataToSave } : p));
-                    })
-                    .catch(err => console.error('Silent Add Error:', err));
+                await apiCall('/packages', {
+                    method: 'POST',
+                    body: JSON.stringify(pkgDataToSave)
+                });
             }
             resetForm();
+            fetchPackages();
         } catch (err) {
-            console.error('Error in handle submit block: ', err);
-            alert('Failed to save package logic.');
+            console.error('Error saving package: ', err);
+            alert('Failed to save package.');
         }
     };
 
@@ -70,15 +68,17 @@ export default function AdminPackages() {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this package?')) {
             try {
-                await deleteDoc(doc(db, 'packages', id));
+                await apiCall(`/packages/${id}?adminId=${admin.id}&adminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+                fetchPackages();
             } catch (err) {
                 console.error('Error deleting package:', err);
+                alert('Failed to delete package.');
             }
         }
     };
 
     const resetForm = () => {
-        setCurrentPackage({ id: '', title: '', price: '', description: '' });
+        setCurrentPackage({ id: '', title: '', price: '', category: 'Wedding', description: '' });
         setIsEditing(false);
     };
 
@@ -119,6 +119,23 @@ export default function AdminPackages() {
                         </div>
 
                         <div className="input-group">
+                            <label>Category</label>
+                            <select
+                                name="category"
+                                value={currentPackage.category}
+                                onChange={handleInputChange}
+                                required
+                            >
+                                <option value="Wedding">Wedding</option>
+                                <option value="Videography">Videography</option>
+                                <option value="Engagement">Engagement</option>
+                                <option value="Pre-Shoot">Pre-Shoot</option>
+                                <option value="Birthday Party">Birthday Party</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div className="input-group">
                             <label>Description (Features)</label>
                             <textarea
                                 name="description"
@@ -149,6 +166,7 @@ export default function AdminPackages() {
                         <div key={pkg.id} className="package-card-admin">
                             <div className="package-info">
                                 <h4>{pkg.title} <span className="price-badge">{pkg.price}</span></h4>
+                                <span className="category-badge">{pkg.category || 'Uncategorized'}</span>
                                 <p>{pkg.description}</p>
                             </div>
                             <div className="package-actions">

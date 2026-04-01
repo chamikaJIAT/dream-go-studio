@@ -2,8 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { apiCall } from '../../api';
 import { AuthContext } from '../../context/AuthContext';
 import ClientAuth from '../ClientAuth/ClientAuth';
 import './BookingForm.css';
@@ -55,9 +54,13 @@ export default function BookingForm() {
     const [formData, setFormData] = useState({
         name: '',
         mobile: '',
-        selectedPackage: '',
-        hotelName: ''
+        selectedCategory: '',
+        hotelName: '',
+        bookingDate: '',
+        coupleName: '',
+        birthdayPersonName: ''
     });
+    const [selectedPackageIds, setSelectedPackageIds] = useState([]);
 
     // Default to Colombo center
     const [location, setLocation] = useState({ lat: 6.9271, lng: 79.8612 });
@@ -72,13 +75,17 @@ export default function BookingForm() {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     // Fetch Packages
+    const fetchPackages = async () => {
+        try {
+            const res = await apiCall('/packages');
+            setPackages(res.packages);
+        } catch (err) {
+            console.error('Failed to fetch packages:', err);
+        }
+    };
+
     useEffect(() => {
-        const unsub = onSnapshot(collection(db, 'packages'), (snapshot) => {
-            const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            console.log("Fetched packages from Firestore:", pData);
-            setPackages(pData);
-        });
-        return () => unsub();
+        fetchPackages();
     }, []);
 
     // Carousel Timer
@@ -92,6 +99,29 @@ export default function BookingForm() {
         return () => clearInterval(timer);
     }, []);
 
+    // Debounced Map Search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery.trim().length > 2) {
+                // To avoid double searching, we will rely on onKeyUp mostly
+                // handleSearch(); 
+            } else if (searchQuery.trim().length === 0) {
+                setSearchResults([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleKeyUp = (e) => {
+        if (searchQuery.trim().length > 2) {
+            handleSearch();
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+        }
+    };
+
     // Auto-fill form data if user is logged in
     useEffect(() => {
         if (user) {
@@ -104,6 +134,9 @@ export default function BookingForm() {
         }
     }, [user]);
 
+    // Derive unique categories from fetched packages
+    const categories = [...new Set(packages.map(p => p.category || 'Wedding'))];
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -112,17 +145,26 @@ export default function BookingForm() {
         }));
     };
 
-    const handleSearch = async () => {
-        if (!searchQuery.trim()) return;
+    const handleSearch = async (queryOverride = null) => {
+        const queryToSearch = queryOverride || searchQuery;
+        if (!queryToSearch.trim()) return;
 
         setIsSearching(true);
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`);
+            // Append ", Sri Lanka" for better local results if not already present
+            const finalQuery = queryToSearch.toLowerCase().includes('sri lanka')
+                ? queryToSearch
+                : `${queryToSearch}, Sri Lanka`;
+
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(finalQuery)}&limit=5&countrycodes=lk`);
             const data = await response.json();
             setSearchResults(data);
+
+            if (data.length === 0 && !queryOverride) {
+                console.log("No results found for:", finalQuery);
+            }
         } catch (error) {
             console.error('Error searching location:', error);
-            // Optionally could show an alert here
         } finally {
             setIsSearching(false);
         }
@@ -145,32 +187,66 @@ export default function BookingForm() {
             return;
         }
 
-        if (formData.name && formData.mobile && formData.selectedPackage && formData.hotelName) {
+        if (formData.name && formData.mobile && selectedPackageIds.length > 0 && formData.hotelName && formData.bookingDate) {
             try {
-                const pkgDetails = packages.find(p => p.id === formData.selectedPackage);
+                const selectedPkgs = packages.filter(p => selectedPackageIds.includes(p.id));
+                const combinedPackageTitles = selectedPkgs.map(p => p.title).join(' + ');
 
-                await addDoc(collection(db, 'bookings'), {
-                    customerId: user.id || null, // Link to the authenticated user
+                // Calculate total amount
+                const totalAmount = selectedPkgs.reduce((sum, pkg) => {
+                    const priceStr = pkg.price || "0";
+                    // Remove "LKR", commas, and whitespace
+                    const numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
+                    return sum + numericPrice;
+                }, 0);
+
+                const bookingPayload = {
+                    customerId: user.id || null,
                     customerName: formData.name,
                     mobile: formData.mobile,
-                    packageId: formData.selectedPackage,
-                    packageTitle: pkgDetails ? pkgDetails.title : 'Unknown Package',
+                    packageIds: selectedPackageIds,
+                    packageTitle: combinedPackageTitles || 'Custom Package',
+                    category: formData.selectedCategory,
                     hotelName: formData.hotelName,
+                    bookingDate: formData.bookingDate,
                     location: { lat: location.lat, lng: location.lng },
-                    status: 'Pending',
-                    createdAt: serverTimestamp()
+                    totalAmount: totalAmount,
+                    status: 'Pending'
+                };
+
+                if (formData.selectedCategory === 'Wedding' || formData.selectedCategory === 'Engagement') {
+                    bookingPayload.coupleName = formData.coupleName;
+                } else if (formData.selectedCategory === 'Birthday Party') {
+                    bookingPayload.birthdayPersonName = formData.birthdayPersonName;
+                }
+
+                await apiCall('/bookings', {
+                    method: 'POST',
+                    body: JSON.stringify(bookingPayload)
                 });
 
                 setSubmitted(true);
+                alert("Booking Submitted Successfully! Your request has been sent to Dream Go Studio. We will contact you soon to confirm.");
                 setTimeout(() => setSubmitted(false), 5000);
 
                 // Keep name and mobile intact since they are tied to account
-                setFormData(prev => ({ ...prev, selectedPackage: '', hotelName: '' }));
+                setFormData(prev => ({
+                    ...prev,
+                    selectedCategory: '',
+                    hotelName: '',
+                    bookingDate: '',
+                    coupleName: '',
+                    birthdayPersonName: ''
+                }));
+                setSelectedPackageIds([]);
                 setLocation({ lat: 6.9271, lng: 79.8612 });
+                setSearchQuery('');
             } catch (err) {
                 console.error('Error submitting booking:', err);
                 alert('Failed to submit booking request. Please try again.');
             }
+        } else if (selectedPackageIds.length === 0) {
+            alert("Please select at least one package/service.");
         }
     };
 
@@ -197,7 +273,7 @@ export default function BookingForm() {
 
                             <div className="login-prompt">
                                 <h3>You must be registered to make a booking</h3>
-                                <p>Quickly sign up or log in to continue booking your photography package.</p>
+                                <p>Quickly create an account or log in to continue booking your photography package.</p>
                                 <button className="submit-button book-now-btn" onClick={() => setShowAuthForm(true)}>
                                     Register / Log In Now
                                 </button>
@@ -244,16 +320,42 @@ export default function BookingForm() {
                                 </div>
 
                                 <div className="input-group">
-                                    <label htmlFor="hotelName">Hotel / Event Venue Name</label>
+                                    <label htmlFor="bookingDate">Booking Date (Event Date)</label>
                                     <input
-                                        type="text"
-                                        id="hotelName"
-                                        name="hotelName"
-                                        placeholder="e.g. Shangri-La, Colombo"
-                                        value={formData.hotelName}
+                                        type="date"
+                                        id="bookingDate"
+                                        name="bookingDate"
+                                        value={formData.bookingDate}
                                         onChange={handleChange}
                                         required
+                                        className="date-input"
                                     />
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="hotelName">Hotel / Event Venue Name</label>
+                                    <div className="hotel-search-wrapper">
+                                        <input
+                                            type="text"
+                                            id="hotelName"
+                                            name="hotelName"
+                                            placeholder="e.g. Shangri-La, Colombo"
+                                            value={formData.hotelName}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            className="hotel-search-btn"
+                                            onClick={() => {
+                                                setSearchQuery(formData.hotelName);
+                                                handleSearch(formData.hotelName);
+                                            }}
+                                            title="Search this hotel on map"
+                                        >
+                                            🔍
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="input-group map-group">
@@ -266,22 +368,9 @@ export default function BookingForm() {
                                             placeholder="Search for a location (e.g. Galle Face)"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="location-search-input"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleSearch();
-                                                }
-                                            }}
+                                            onKeyUp={handleKeyUp}
+                                            className="location-search-input no-button"
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={handleSearch}
-                                            className="search-button"
-                                            disabled={isSearching}
-                                        >
-                                            {isSearching ? 'Searching...' : 'Search'}
-                                        </button>
 
                                         {/* Search Results Dropdown */}
                                         {searchResults.length > 0 && (
@@ -313,37 +402,90 @@ export default function BookingForm() {
                                 </div>
 
                                 <div className="input-group">
-                                    <label htmlFor="selectedPackage">Select Package</label>
+                                    <label htmlFor="selectedCategory">Select Event Category</label>
                                     <div className="custom-select-wrapper">
                                         <select
-                                            id="selectedPackage"
-                                            name="selectedPackage"
-                                            value={formData.selectedPackage}
-                                            onChange={handleChange}
+                                            id="selectedCategory"
+                                            name="selectedCategory"
+                                            value={formData.selectedCategory}
+                                            onChange={(e) => {
+                                                handleChange(e);
+                                                setSelectedPackageIds([]); // Reset selection when category changes
+                                            }}
                                             required
                                             className="package-dropdown"
                                         >
-                                            <option value="" disabled>Select a package...</option>
-                                            {packages.map((pkg) => (
-                                                <option key={pkg.id} value={pkg.id}>
-                                                    {pkg.title}
-                                                </option>
+                                            <option value="" disabled>Select event type...</option>
+                                            {categories.map((cat, idx) => (
+                                                <option key={idx} value={cat}>{cat}</option>
                                             ))}
                                         </select>
                                         <div className="select-arrow">▼</div>
                                     </div>
-
-                                    {formData.selectedPackage && packages.find(p => p.id === formData.selectedPackage) && (
-                                        <div className="selected-package-details">
-                                            <div className="pkg-price-badge">
-                                                {packages.find(p => p.id === formData.selectedPackage).price}
-                                            </div>
-                                            <p className="pkg-desc">
-                                                {packages.find(p => p.id === formData.selectedPackage).description}
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
+
+                                {(formData.selectedCategory === 'Wedding' || formData.selectedCategory === 'Engagement') && (
+                                    <div className="input-group slide-in">
+                                        <label htmlFor="coupleName">Couple Name</label>
+                                        <input
+                                            type="text"
+                                            id="coupleName"
+                                            name="coupleName"
+                                            placeholder="Enter Couple Name"
+                                            value={formData.coupleName}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                {formData.selectedCategory === 'Birthday Party' && (
+                                    <div className="input-group slide-in">
+                                        <label htmlFor="birthdayPersonName">Birthday Person's Name</label>
+                                        <input
+                                            type="text"
+                                            id="birthdayPersonName"
+                                            name="birthdayPersonName"
+                                            placeholder="Birthday eka thiyena kenage name eka add karanna"
+                                            value={formData.birthdayPersonName}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                {formData.selectedCategory && (
+                                    <div className="input-group">
+                                        <label>Select Services (You can choose multiple)</label>
+                                        <div className="services-checkbox-grid">
+                                            {packages.filter(p => (p.category || 'Wedding') === formData.selectedCategory).map(pkg => (
+                                                <label key={pkg.id} className={`service-checkbox-card ${selectedPackageIds.includes(pkg.id) ? 'selected' : ''}`}>
+                                                    <div className="cb-header">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedPackageIds.includes(pkg.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedPackageIds([...selectedPackageIds, pkg.id]);
+                                                                } else {
+                                                                    setSelectedPackageIds(selectedPackageIds.filter(id => id !== pkg.id));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <span className="service-title-cb">{pkg.title}</span>
+                                                    </div>
+                                                    <div className="service-details-cb">
+                                                        <div className="service-price-cb">{pkg.price}</div>
+                                                        <p className="service-desc-cb">{pkg.description}</p>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                            {packages.filter(p => (p.category || 'Wedding') === formData.selectedCategory).length === 0 && (
+                                                <p className="no-services-msg">No services available for this category yet.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <button type="submit" className="submit-button">
                                     Confirm Booking

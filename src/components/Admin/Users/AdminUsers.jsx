@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { apiCall } from '../../../api';
 import './AdminUsers.css';
 
 export default function AdminUsers() {
@@ -8,22 +7,29 @@ export default function AdminUsers() {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const q = query(collection(db, 'clients'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            const userData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setUsers(userData);
+    const fetchUsers = async () => {
+        try {
+            const res = await apiCall('/auth/users');
+            setUsers(res.users);
             setLoading(false);
-        });
-        return () => unsub();
+        } catch (err) {
+            console.error('Failed to fetch users', err);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
     }, []);
 
     const toggleStatus = async (user) => {
         const newStatus = user.status === 'Inactive' ? 'Active' : 'Inactive';
         try {
-            await updateDoc(doc(db, 'clients', user.id), {
-                status: newStatus
+            await apiCall(`/auth/users/${user.id}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus })
             });
+            fetchUsers();
         } catch (err) {
             console.error("Error updating status:", err);
             alert("Failed to update status.");
@@ -33,13 +39,12 @@ export default function AdminUsers() {
     const filteredUsers = users.filter(user => 
         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.mobile?.includes(searchTerm) ||
-        user.nic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.username?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        const date = new Date(timestamp);
         return date.toLocaleDateString();
     };
 
@@ -56,7 +61,7 @@ export default function AdminUsers() {
                         <span className="search-icon">🔍</span>
                         <input 
                             type="text" 
-                            placeholder="Search by name, mobile, nic, or username..." 
+                            placeholder="Search by name, mobile, or username..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -70,7 +75,6 @@ export default function AdminUsers() {
                                 <th>Joined Date</th>
                                 <th>Name</th>
                                 <th>Mobile</th>
-                                <th>NIC</th>
                                 <th>Username</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -84,7 +88,6 @@ export default function AdminUsers() {
                                     <td>{formatDate(user.createdAt)}</td>
                                     <td><strong>{user.name}</strong></td>
                                     <td>{user.mobile}</td>
-                                    <td>{user.nic}</td>
                                     <td><code className="username-tag">{user.username}</code></td>
                                     <td>
                                         <span className={`status-badge ${user.status === 'Inactive' ? 'badge-danger' : 'badge-success'}`}>
@@ -105,7 +108,7 @@ export default function AdminUsers() {
                             ))}
                             {!loading && filteredUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="empty-state">No users found.</td>
+                                    <td colSpan="6" className="empty-state">No users found.</td>
                                 </tr>
                             )}
                         </tbody>

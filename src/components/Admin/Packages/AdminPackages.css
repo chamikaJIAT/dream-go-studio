@@ -106,22 +106,33 @@
     transform: translateX(5px);
 }
 
-.package-info h4 {
+.package-card-admin h4 {
     margin: 0 0 0.5rem 0;
-    font-size: 1.2rem;
-    color: #f8fafc;
+    color: white;
+    font-size: 1.1rem;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
 }
 
-.price-badge {
+.category-badge {
+    display: inline-block;
+    background: rgba(148, 163, 184, 0.2);
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.package-card-admin p {
     background: rgba(52, 211, 153, 0.15);
     color: #34d399;
     padding: 0.3rem 0.8rem;
     border-radius: 20px;
     font-size: 0.85rem;
-    font-weight: 600;
 }
 
 .package-info p {

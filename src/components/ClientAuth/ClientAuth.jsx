@@ -1,16 +1,14 @@
 import { useState, useContext } from 'react';
-import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { apiCall } from '../../api';
 import { AuthContext } from '../../context/AuthContext';
 import './ClientAuth.css';
 
 export default function ClientAuth({ onAuthSuccess, onCancel }) {
-    const [isLoginView, setIsLoginView] = useState(true); // Toggle between Login and Signup
+    const [isLoginView, setIsLoginView] = useState(true); // Toggle between Login and Create Account
 
     // Form states
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
-    const [nic, setNic] = useState('');
     const [username, setUsername] = useState('');
 
     // UI states
@@ -37,35 +35,25 @@ export default function ClientAuth({ onAuthSuccess, onCancel }) {
 
         try {
             // Basic validation
-            if (!name || !mobile || !nic) {
+            if (!name || !mobile) {
                 throw new Error("All fields are required.");
             }
 
-            // 1. Check if mobile or nic already exists
-            const qNic = query(collection(db, 'clients'), where('nic', '==', nic));
-            const qMobile = query(collection(db, 'clients'), where('mobile', '==', mobile));
-
-            const [nicSnap, mobileSnap] = await Promise.all([getDocs(qNic), getDocs(qMobile)]);
-
-            if (!nicSnap.empty) throw new Error("A user with this NIC already exists.");
-            if (!mobileSnap.empty) throw new Error("A user with this Mobile number already exists.");
-
-            // 2. Generate unique username
-            // Format: First word of name + random 4 digits (e.g., Alex_4921)
+            // Generate unique username
             const firstName = name.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const newUsername = `${firstName}_${randomNum}`;
 
-            // 3. Save to Firestore
-            const newClient = {
-                name,
-                mobile, // This also acts as the password
-                nic,
-                username: newUsername,
-                createdAt: serverTimestamp()
-            };
-
-            await addDoc(collection(db, 'clients'), newClient);
+            // API Register
+            await apiCall('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name,
+                    mobile,
+                    username: newUsername,
+                    password: mobile // using mobile as password
+                })
+            });
 
             // 4. Show success screen with username
             setGeneratedUsername(newUsername);
@@ -100,21 +88,21 @@ export default function ClientAuth({ onAuthSuccess, onCancel }) {
                 throw new Error("Username and Mobile number are required to login.");
             }
 
-            // Search Firebase for matching username & password(mobile)
-            const q = query(
-                collection(db, 'clients'),
-                where('username', '==', searchUser),
-                where('mobile', '==', searchPass)
-            );
+            // Search API for matching username & password(mobile)
+            const res = await apiCall('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({
+                    username: searchUser,
+                    password: searchPass
+                })
+            });
 
-            const snap = await getDocs(q);
-
-            if (snap.empty) {
-                throw new Error("Invalid Username or Mobile Number.");
+            if (!res.success) {
+                throw new Error(res.message || "Invalid Username or Mobile Number.");
             }
 
             // Login successful
-            const userData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+            const userData = res.user;
 
             // Save to context/localStorage
             login({
@@ -206,11 +194,11 @@ export default function ClientAuth({ onAuthSuccess, onCancel }) {
                         {loading ? 'Logging in...' : 'Log In'}
                     </button>
                     <p className="auth-footer">
-                        Don't have an account? <span onClick={toggleView}>Sign Up here</span>
+                        Don't have an account? <span onClick={toggleView}>Create Account here</span>
                     </p>
                 </form>
             ) : (
-                /* SIGNUP FORM */
+                /* CREATE ACCOUNT FORM */
                 <form onSubmit={handleSignup} className="auth-form">
                     <div className="input-group">
                         <label>Full Name</label>
@@ -219,16 +207,6 @@ export default function ClientAuth({ onAuthSuccess, onCancel }) {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Your full name"
-                            required
-                        />
-                    </div>
-                    <div className="input-group">
-                        <label>NIC Number</label>
-                        <input
-                            type="text"
-                            value={nic}
-                            onChange={(e) => setNic(e.target.value)}
-                            placeholder="Your NIC"
                             required
                         />
                     </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { apiCall } from '../../api';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from './Breadcrumbs';
 import './Gallery.css';
@@ -10,11 +9,15 @@ export default function Gallery() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const q = query(collection(db, 'categories'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsub();
+        const fetchCategories = async () => {
+            try {
+                const res = await apiCall('/gallery/categories');
+                setCategories(res.categories);
+            } catch (err) {
+                console.error("Failed to fetch gallery categories:", err);
+            }
+        };
+        fetchCategories();
     }, []);
 
     return (
@@ -29,8 +32,8 @@ export default function Gallery() {
                 {categories.map((cat) => (
                     <div key={cat.id} className="gallery-card" onClick={() => navigate(`/gallery/${cat.id}`)}>
                         <div className="card-image">
-                            {cat.coverUrl ? (
-                                <img src={cat.coverUrl} alt={cat.name} loading="lazy" />
+                            {cat.coverImage ? (
+                                <img src={cat.coverImage} alt={cat.name} loading="lazy" />
                             ) : (
                                 <div className="placeholder-bg">📁</div>
                             )}

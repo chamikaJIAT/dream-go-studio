@@ -60,6 +60,8 @@
 .text-danger { color: #ef4444; }
 .text-success { color: #10b981; }
 .text-warning { color: #f59e0b; }
+.text-muted { color: #94a3b8; }
+.text-info { color: #38bdf8; }
 
 @media (max-width: 768px) {
     .input-row {

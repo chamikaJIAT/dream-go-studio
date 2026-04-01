@@ -1,13 +1,35 @@
+import { useState, useEffect } from 'react';
+import { apiCall } from '../../../api';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
-    // Mock Data
-    const stats = [
-        { label: 'Total Bookings', value: '124', icon: '📅', color: 'blue' },
-        { label: 'Pending Approvals', value: '12', icon: '⏳', color: 'orange' },
-        { label: 'Gallery Photos', value: '840', icon: '🖼️', color: 'purple' },
-        { label: 'Revenue (LKR)', value: '1.2M', icon: '💰', color: 'green' }
-    ];
+    const [stats, setStats] = useState([]);
+    const [recentBookings, setRecentBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDashboardData = async () => {
+        try {
+            const [statsRes, bookingsRes] = await Promise.all([
+                apiCall('/stats'),
+                apiCall('/bookings')
+            ]);
+            setStats(statsRes.stats);
+            // Show only first 5 recent bookings
+            setRecentBookings(bookingsRes.bookings.slice(0, 5));
+        } catch (err) {
+            console.error('Failed to fetch dashboard data', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    if (loading) {
+        return <div className="dashboard-loading">Loading Dashboard Metrics...</div>;
+    }
 
     return (
         <div className="dashboard-container">
@@ -26,7 +48,19 @@ export default function AdminDashboard() {
             <div className="dashboard-widgets">
                 <div className="widget-card recent-bookings">
                     <h3>Recent Booking Requests</h3>
-                    <p className="placeholder-text">Coming soon: List of recent bookings to approve/reject...</p>
+                    <div className="recent-list">
+                        {recentBookings.length === 0 ? (
+                            <p className="empty-msg">No new bookings yet.</p>
+                        ) : recentBookings.map(b => (
+                            <div key={b.id} className="recent-item">
+                                <div className="recent-meta">
+                                    <strong>{b.customerName}</strong>
+                                    <span>{b.category}</span>
+                                </div>
+                                <div className={`recent-status ${b.status.toLowerCase()}`}>{b.status}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="widget-card quick-actions">

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, orderBy, query } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { apiCall } from '../../../api';
 import './AdminMessages.css';
 
 export default function AdminMessages() {
@@ -8,41 +7,60 @@ export default function AdminMessages() {
     const [selectedMessage, setSelectedMessage] = useState(null);
     const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'read'
 
+    const fetchMessages = async () => {
+        try {
+            const res = await apiCall('/messages');
+            setMessages(res.messages);
+        } catch (err) {
+            console.error('Failed to fetch messages', err);
+        }
+    };
+
     useEffect(() => {
-        const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsub();
+        fetchMessages();
     }, []);
 
     const handleOpenMessage = async (msg) => {
         setSelectedMessage(msg);
-        if (!msg.isRead) {
-            await updateDoc(doc(db, 'messages', msg.id), { isRead: true });
+        if (msg.status === 'Unread') {
+            try {
+                await apiCall(`/messages/${msg.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'Read' })
+                });
+                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'Read' } : m));
+            } catch (err) {
+                console.error('Error marking as read', err);
+            }
         }
     };
 
     const handleDelete = async (id) => {
         if (window.confirm('Delete this message?')) {
-            await deleteDoc(doc(db, 'messages', id));
-            if (selectedMessage?.id === id) setSelectedMessage(null);
+            try {
+                await apiCall(`/messages/${id}`, { method: 'DELETE' });
+                if (selectedMessage?.id === id) setSelectedMessage(null);
+                fetchMessages();
+            } catch (err) {
+                console.error("Error deleting:", err);
+            }
         }
     };
 
     const formatDate = (ts) => {
         if (!ts) return '';
-        return new Date(ts.toMillis()).toLocaleString('en-US', {
+        const date = new Date(ts);
+        return date.toLocaleString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
     };
 
-    const unreadCount = messages.filter(m => !m.isRead).length;
+    const unreadCount = messages.filter(m => m.status === 'Unread').length;
 
     const filtered = messages.filter(m => {
-        if (filter === 'unread') return !m.isRead;
-        if (filter === 'read') return m.isRead;
+        if (filter === 'unread') return m.status === 'Unread';
+        if (filter === 'read') return m.status === 'Read';
         return true;
     });
 
@@ -75,7 +93,7 @@ export default function AdminMessages() {
                     {filtered.map(msg => (
                         <div
                             key={msg.id}
-                            className={`message-item ${!msg.isRead ? 'unread' : ''} ${selectedMessage?.id === msg.id ? 'active' : ''}`}
+                            className={`message-item ${msg.status === 'Unread' ? 'unread' : ''} ${selectedMessage?.id === msg.id ? 'active' : ''}`}
                             onClick={() => handleOpenMessage(msg)}
                         >
                             <div className="message-item-header">
@@ -84,7 +102,7 @@ export default function AdminMessages() {
                             </div>
                             <div className="message-subject">{msg.subject || 'No Subject'}</div>
                             <div className="message-preview">{msg.message?.substring(0, 70)}...</div>
-                            {!msg.isRead && <span className="new-dot" />}
+                            {msg.status === 'Unread' && <span className="new-dot" />}
                         </div>
                     ))}
                 </div>

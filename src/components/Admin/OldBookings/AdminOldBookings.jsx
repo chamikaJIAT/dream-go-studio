@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, orderBy, query, arrayUnion } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { apiCall } from '../../../api';
 import './AdminOldBookings.css';
 
 export default function AdminOldBookings() {
@@ -28,14 +27,17 @@ export default function AdminOldBookings() {
         status: ''
     });
 
-    // Fetch real-time data from Firestore
+    const fetchOldBookings = async () => {
+        try {
+            const res = await apiCall('/old_bookings');
+            setBookings(res.old_bookings);
+        } catch (err) {
+            console.error('Failed to fetch old bookings', err);
+        }
+    };
+
     useEffect(() => {
-        const q = query(collection(db, 'old_bookings'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            const bData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setBookings(bData);
-        });
-        return () => unsub();
+        fetchOldBookings();
     }, []);
 
     const handleInputChange = (e) => {
@@ -60,15 +62,21 @@ export default function AdminOldBookings() {
 
         try {
             if (isEditing) {
-                const bookingRef = doc(db, 'old_bookings', currentBooking.id);
-                await updateDoc(bookingRef, bookingDataToSave);
+                await apiCall(`/old_bookings/${currentBooking.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(bookingDataToSave)
+                });
             } else {
-                await addDoc(collection(db, 'old_bookings'), {
-                    ...bookingDataToSave,
-                    createdAt: new Date().toISOString()
+                await apiCall('/old_bookings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        ...bookingDataToSave,
+                        createdAt: new Date().toISOString()
+                    })
                 });
             }
             resetForm();
+            fetchOldBookings();
         } catch (err) {
             console.error('Error saving booking:', err);
             alert('Failed to save booking.');
@@ -83,7 +91,8 @@ export default function AdminOldBookings() {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this record?')) {
             try {
-                await deleteDoc(doc(db, 'old_bookings', id));
+                await apiCall(`/old_bookings/${id}`, { method: 'DELETE' });
+                fetchOldBookings();
             } catch (err) {
                 console.error('Error deleting booking:', err);
             }
@@ -92,7 +101,11 @@ export default function AdminOldBookings() {
 
     const handleStatusChange = async (id, newStatus) => {
         try {
-            await updateDoc(doc(db, 'old_bookings', id), { status: newStatus });
+            await apiCall(`/old_bookings/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus })
+            });
+            fetchOldBookings();
         } catch (err) {
             console.error('Error updating status:', err);
         }
@@ -116,7 +129,6 @@ export default function AdminOldBookings() {
     const handlePaymentSubmit = async (e) => {
         e.preventDefault();
         try {
-            const bookingRef = doc(db, 'old_bookings', currentBooking.id);
             const newPayment = {
                 amount: Number(paymentData.amount),
                 date: paymentData.date,
@@ -126,14 +138,17 @@ export default function AdminOldBookings() {
 
             const updates = {
                 paidAmount: (Number(currentBooking.paidAmount) || 0) + newPayment.amount,
-                paymentHistory: arrayUnion(newPayment)
+                paymentHistory: [...(currentBooking.paymentHistory || []), newPayment]
             };
 
             if (paymentData.status) {
                 updates.status = paymentData.status;
             }
 
-            await updateDoc(bookingRef, updates);
+            await apiCall(`/old_bookings/${currentBooking.id}`, {
+                method: 'PUT',
+                body: JSON.stringify(updates)
+            });
             setIsPaying(false);
             setPaymentData({
                 amount: '',
@@ -142,6 +157,7 @@ export default function AdminOldBookings() {
                 status: ''
             });
             alert('Payment added successfully!');
+            fetchOldBookings();
         } catch (err) {
             console.error('Error adding payment:', err);
             alert('Failed to add payment.');
@@ -170,11 +186,17 @@ export default function AdminOldBookings() {
         }
     };
 
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'Completed': return '✓';
-            case 'Cancelled': return '✕';
-            default: return '●';
+    const formatDate = (dateStringish) => {
+        if (!dateStringish) return 'N/A';
+        try {
+            const date = new Date(dateStringish);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (e) {
+            return 'N/A';
         }
     };
 
@@ -317,7 +339,8 @@ export default function AdminOldBookings() {
                     <table className="admin-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th>Event Date</th>
+                                <th>Created</th>
                                 <th>Customer</th>
                                 <th>Service</th>
                                 <th>Total</th>
@@ -331,6 +354,7 @@ export default function AdminOldBookings() {
                             {filteredBookings.map((booking) => (
                                 <tr key={booking.id}>
                                     <td>{booking.date}</td>
+                                    <td className="text-muted" style={{ fontSize: '0.8rem' }}>{formatDate(booking.createdAt)}</td>
                                     <td>
                                         <div className="cust-info">
                                             <strong>{booking.customerName}</strong>
@@ -385,7 +409,7 @@ export default function AdminOldBookings() {
                             ))}
                             {filteredBookings.length === 0 && (
                                 <tr>
-                                    <td colSpan="8" className="empty-state">No historical records found.</td>
+                                    <td colSpan="9" className="empty-state">No historical records found.</td>
                                 </tr>
                             )}
                         </tbody>

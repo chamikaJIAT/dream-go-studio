@@ -1,7 +1,6 @@
 import './ContactUs.css';
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { apiCall } from '../../api';
 
 export default function ContactUs() {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -16,10 +15,16 @@ export default function ContactUs() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await addDoc(collection(db, 'messages'), {
-                ...formData,
-                createdAt: serverTimestamp(),
-                isRead: false
+            await apiCall('/messages', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    subject: formData.subject,
+                    message: formData.message,
+                    status: 'Unread'
+                })
             });
             setSubmitted(true);
             setFormData({ name: '', email: '', phone: '', subject: '', message: '' });

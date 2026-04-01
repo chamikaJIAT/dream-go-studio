@@ -1,13 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, doc, deleteDoc, serverTimestamp, orderBy, query, where, writeBatch } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { apiCall, API_BASE_URL } from '../../../api';
 import './AdminGallery.css';
 
 
 export default function AdminGallery() {
-    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/duw6bqdkh/image/upload";
-    const UPLOAD_PRESET = "dream_uploads";
-
     const [categories, setCategories] = useState([]);
     const [events, setEvents] = useState([]);
     const [photos, setPhotos] = useState([]);
@@ -26,57 +22,75 @@ export default function AdminGallery() {
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const fileInputRef = useRef(null);
+    const admin = JSON.parse(localStorage.getItem('user') || '{}');
 
     // Fetch Categories
+    const fetchCategories = async () => {
+        try {
+            const res = await apiCall('/gallery/categories');
+            setCategories(res.categories);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     useEffect(() => {
-        const q = query(collection(db, 'categories'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsub();
+        fetchCategories();
     }, []);
 
     // Fetch Events when Category selected
-    useEffect(() => {
+    const fetchEvents = async () => {
         if (!selectedCategory) {
             setEvents([]);
             return;
         }
-        const q = query(collection(db, 'events'), where('categoryId', '==', selectedCategory.id));
-        const unsub = onSnapshot(q, (snapshot) => {
-            const evts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Order by createdAt on client side to avoid needing complex index for now
-            evts.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+        try {
+            const res = await apiCall(`/gallery/events/${selectedCategory.id}`);
+            // Order by createdAt local
+            const evts = res.events.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setEvents(evts);
-        });
-        return () => unsub();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        fetchEvents();
     }, [selectedCategory]);
 
     // Fetch Photos when Event selected
-    useEffect(() => {
+    const fetchPhotos = async () => {
         if (!selectedEvent) {
             setPhotos([]);
             return;
         }
-        const q = query(collection(db, 'photos'), where('eventId', '==', selectedEvent.id));
-        const unsub = onSnapshot(q, (snapshot) => {
-            const pts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            pts.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-            setPhotos(pts);
-        });
-        return () => unsub();
+        try {
+            const res = await apiCall(`/gallery/images/${selectedEvent.id}`);
+            setPhotos(res.images);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        fetchPhotos();
     }, [selectedEvent]);
 
     const handleCreateCategory = async (e) => {
         e.preventDefault();
         if (!newCategoryName.trim()) return;
         try {
-            await addDoc(collection(db, 'categories'), {
-                name: newCategoryName.trim(),
-                createdAt: serverTimestamp(),
-                coverUrl: ''
+            await apiCall('/gallery/categories', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    name: newCategoryName.trim(), 
+                    description: '',
+                    performingAdminId: admin.id,
+                    performingAdminName: admin.name
+                })
             });
             setNewCategoryName('');
+            fetchCategories();
         } catch (err) {
             console.error("Create category failed", err);
             alert("Failed to create category");
@@ -87,15 +101,19 @@ export default function AdminGallery() {
         e.preventDefault();
         if (!newEventName.trim() || !selectedCategory) return;
         try {
-            await addDoc(collection(db, 'events'), {
-                name: newEventName.trim(),
-                date: newEventDate,
-                categoryId: selectedCategory.id,
-                createdAt: serverTimestamp(),
-                coverUrl: ''
+            await apiCall('/gallery/events', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    categoryId: selectedCategory.id, 
+                    title: newEventName.trim(),
+                    date: newEventDate,
+                    performingAdminId: admin.id,
+                    performingAdminName: admin.name
+                })
             });
             setNewEventName('');
             setNewEventDate('');
+            fetchEvents();
         } catch (err) {
             console.error("Create event failed", err);
             alert("Failed to create event");
@@ -103,20 +121,22 @@ export default function AdminGallery() {
     };
 
     const handleDeleteCategory = async (cat) => {
-        if (!window.confirm(`Delete category "${cat.name}"? This won't automatically delete nested events/photos yet.`)) return;
+        if (!window.confirm(`Delete category "${cat.name}"? This will delete attached events/photos in database.`)) return;
         try {
-            await deleteDoc(doc(db, 'categories', cat.id));
+            await apiCall(`/gallery/categories/${cat.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
             if (selectedCategory?.id === cat.id) setSelectedCategory(null);
+            fetchCategories();
         } catch (err) {
             console.error("Delete category failed", err);
         }
     };
 
     const handleDeleteEvent = async (evt) => {
-        if (!window.confirm(`Delete event "${evt.name}"? This won't automatically delete photos yet.`)) return;
+        if (!window.confirm(`Delete event "${evt.title || evt.name}"?`)) return;
         try {
-            await deleteDoc(doc(db, 'events', evt.id));
+            await apiCall(`/gallery/events/${evt.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
             if (selectedEvent?.id === evt.id) setSelectedEvent(null);
+            fetchEvents();
         } catch (err) {
             console.error("Delete event failed", err);
         }
@@ -143,62 +163,31 @@ export default function AdminGallery() {
     const submitPhotosUpload = async () => {
         if (filesToUpload.length === 0 || !selectedEvent) return;
         setIsUploading(true);
-        let uploadedCount = 0;
 
         try {
-            const batchImages = [];
-
-            for (let i = 0; i < filesToUpload.length; i++) {
-                const file = filesToUpload[i];
-
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('upload_preset', UPLOAD_PRESET);
-
-                const response = await fetch(CLOUDINARY_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error("Failed to upload to Cloudinary");
-                }
-
-                const data = await response.json();
-                const downloadUrl = data.secure_url;
-
-                batchImages.push({
-                    eventId: selectedEvent.id,
-                    url: downloadUrl,
-                    createdAt: serverTimestamp()
-                });
-
-                uploadedCount++;
-                setUploadProgress(Math.round((uploadedCount / filesToUpload.length) * 100));
-            }
-
-            const batch = writeBatch(db);
-            const firstPhotoUrl = batchImages[0].url;
-
-            batchImages.forEach(imgData => {
-                const newDocRef = doc(collection(db, 'photos'));
-                batch.set(newDocRef, imgData);
+            const formData = new FormData();
+            formData.append('eventId', selectedEvent.id);
+            filesToUpload.forEach(file => {
+                formData.append('images', file);
             });
 
-            if (!selectedEvent.coverUrl) {
-                const eventRef = doc(db, 'events', selectedEvent.id);
-                batch.update(eventRef, { coverUrl: firstPhotoUrl });
-            }
+            formData.append('performingAdminId', admin.id);
+            formData.append('performingAdminName', admin.name);
 
-            await batch.commit();
+            await apiCall('/gallery/images', {
+                method: 'POST',
+                body: formData
+            });
 
             setFilesToUpload([]);
             setPreviews([]);
             setUploadProgress(0);
             if (fileInputRef.current) fileInputRef.current.value = "";
+            fetchPhotos(); // Refresh newly uploaded images
+            fetchEvents(); // Event cover might update
         } catch (err) {
             console.error("Upload failed", err);
-            alert("Upload failed. Make sure Storage rules allow writes.");
+            alert("Upload failed. Make sure server accepts the size constraints.");
         } finally {
             setIsUploading(false);
             setUploadProgress(0);
@@ -215,10 +204,8 @@ export default function AdminGallery() {
     const handleDeletePhoto = async (photo) => {
         if (window.confirm('Are you sure you want to remove this photo?')) {
             try {
-                // Delete reference from Firestore
-                await deleteDoc(doc(db, 'photos', photo.id));
-                // Note: Deleting the actual file from Cloudinary requires a backend secret,
-                // so we simply remove it from the DB. It will no longer show up.
+                await apiCall(`/gallery/images/${photo.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+                fetchPhotos();
             } catch (err) {
                 console.error("Delete photo failed", err);
             }
@@ -242,7 +229,7 @@ export default function AdminGallery() {
                 {selectedEvent && (
                     <>
                         <span className="separator">/</span>
-                        <span className="active">{selectedEvent.name}</span>
+                        <span className="active">{selectedEvent.title || selectedEvent.name}</span>
                     </>
                 )}
             </div>
@@ -301,11 +288,11 @@ export default function AdminGallery() {
                 {events.map(evt => (
                     <div key={evt.id} className="admin-card" onClick={() => setSelectedEvent(evt)}>
                         <div className="card-image-placeholder">
-                            {evt.coverUrl ? <img src={evt.coverUrl} alt={evt.name} /> : <span className="icon-placeholder">📅</span>}
+                            {evt.coverImage || evt.coverUrl ? <img src={evt.coverImage || evt.coverUrl} alt={evt.title || evt.name} /> : <span className="icon-placeholder">📅</span>}
                         </div>
                         <div className="card-info">
                             <div>
-                                <h4>{evt.name}</h4>
+                                <h4>{evt.title || evt.name}</h4>
                                 {evt.date && <small className="event-date">{new Date(evt.date).toLocaleDateString()}</small>}
                             </div>
                             <button className="icon-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteEvent(evt); }}>🗑️</button>
@@ -320,7 +307,7 @@ export default function AdminGallery() {
     const renderPhotosView = () => (
         <div className="view-section">
             <div className="upload-section">
-                <h3>Upload Photos to "{selectedEvent.name}"</h3>
+                <h3>Upload Photos to "{selectedEvent.title || selectedEvent.name}"</h3>
                 <div className="upload-box" onClick={handleUploadClick}>
                     <div className="upload-icon">☁️</div>
                     <p>Click to browse or drag and drop multiple photos</p>
@@ -349,14 +336,13 @@ export default function AdminGallery() {
 
                         {isUploading && (
                             <div className="progress-bar-container">
-                                <div className="progress-bar" style={{ width: `${uploadProgress}%` }}></div>
-                                <span>{uploadProgress}%</span>
+                                <div className="progress-bar" style={{ width: `100%`, animation: 'pulse 1.5s infinite' }}></div>
                             </div>
                         )}
 
                         <div className="upload-buttons">
                             <button className="btn-primary" onClick={submitPhotosUpload} disabled={isUploading}>
-                                {isUploading ? 'Uploading...' : `Upload ${previews.length} Photos`}
+                                {isUploading ? 'Uploading Please Wait...' : `Upload ${previews.length} Photos to Server`}
                             </button>
                             <button className="btn-secondary" onClick={cancelUpload} disabled={isUploading}>Cancel</button>
                         </div>
