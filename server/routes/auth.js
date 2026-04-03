@@ -48,9 +48,8 @@ router.post('/admin/login', async (req, res) => {
         
         if (rows.length > 0) {
             const adminData = rows[0];
-            adminData.permissions = typeof adminData.permissions === 'string' 
-                ? JSON.parse(adminData.permissions) 
-                : (adminData.permissions || []);
+            // PostgreSQL automatically parses JSONB
+            adminData.permissions = adminData.permissions || [];
             res.json({ success: true, user: adminData });
 
             // Log Admin Login

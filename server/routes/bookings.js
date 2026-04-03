@@ -32,10 +32,10 @@ const upload = multer({
 router.get('/', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM bookings ORDER BY createdAt DESC');
-        // Parse JSON packageIds for React to process just like Firebase did
+        // MySQL with mysql2 usually parses JSON automatically if typed as JSON
         const parsedRows = rows.map(r => ({
             ...r,
-            packageIds: typeof r.packageIds === 'string' ? JSON.parse(r.packageIds) : r.packageIds
+            packageIds: typeof r.packageIds === 'string' ? JSON.parse(r.packageIds) : (r.packageIds || [])
         }));
         res.json({ success: true, bookings: parsedRows });
     } catch (err) {
@@ -51,7 +51,7 @@ router.get('/user/:customerId', async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM bookings WHERE customerId = ? ORDER BY createdAt DESC', [customerId]);
         const parsedRows = rows.map(r => ({
             ...r,
-            packageIds: typeof r.packageIds === 'string' ? JSON.parse(r.packageIds) : r.packageIds
+            packageIds: typeof r.packageIds === 'string' ? JSON.parse(r.packageIds) : (r.packageIds || [])
         }));
         res.json({ success: true, bookings: parsedRows });
     } catch (err) {
@@ -105,22 +105,38 @@ router.put('/:id', async (req, res) => {
         
         let updates = [];
         let values = [];
+        let idx = 1;
 
-        if (status) { updates.push('status = ?'); values.push(status); }
+        if (status) { 
+            updates.push(`status = ?`); 
+            values.push(status); 
+        }
         if (paymentStatus) { 
-            updates.push('paymentStatus = ?'); 
+            updates.push(`paymentStatus = ?`); 
             values.push(paymentStatus); 
 
             // If admin marks payment as Success, transfer pending to paid
             if (paymentStatus === 'Success') {
-                updates.push('paidAmount = paidAmount + pendingPaidAmount');
-                updates.push('pendingPaidAmount = 0');
+                updates.push(`paidAmount = paidAmount + pendingPaidAmount`);
+                updates.push(`pendingPaidAmount = 0`);
             }
         }
-        if (bookingDate) { updates.push('bookingDate = ?'); values.push(bookingDate); }
-        if (packageIds) { updates.push('packageIds = ?'); values.push(JSON.stringify(packageIds)); }
-        if (packageTitle) { updates.push('packageTitle = ?'); values.push(packageTitle); }
-        if (req.body.totalAmount !== undefined) { updates.push('totalAmount = ?'); values.push(req.body.totalAmount); }
+        if (bookingDate) { 
+            updates.push(`bookingDate = ?`); 
+            values.push(bookingDate); 
+        }
+        if (packageIds) { 
+            updates.push(`packageIds = ?`); 
+            values.push(JSON.stringify(packageIds)); 
+        }
+        if (packageTitle) { 
+            updates.push(`packageTitle = ?`); 
+            values.push(packageTitle); 
+        }
+        if (req.body.totalAmount !== undefined) { 
+            updates.push(`totalAmount = ?`); 
+            values.push(req.body.totalAmount); 
+        }
 
         if (updates.length > 0) {
             values.push(id);
@@ -168,7 +184,6 @@ router.post('/:id/upload-receipt', upload.single('receipt'), async (req, res) =>
         res.json({ success: true, paymentReceiptUrl });
 
         // Log Receipt Upload
-        // We don't have user info in req.body for this multipart request easily, but we can log the action
         logActivity({
             actorType: 'Customer',
             action: 'Uploaded Receipt',

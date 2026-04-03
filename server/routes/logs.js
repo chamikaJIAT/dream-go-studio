@@ -10,27 +10,29 @@ router.get('/', async (req, res) => {
 
         let conditions = [];
         let values = [];
+        let idx = 1;
 
         if (actorType) {
-            conditions.push('actorType = ?');
+            conditions.push(`actorType = ?`);
             values.push(actorType);
         }
         if (action) {
-            conditions.push('action LIKE ?');
+            // LIKE is generally case-insensitive in MySQL
+            conditions.push(`action LIKE ?`);
             values.push(`%${action}%`);
         }
 
         const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-        const [rows] = await pool.query(
-            `SELECT * FROM activity_logs ${where} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
-            [...values, parseInt(limit), parseInt(offset)]
-        );
+        // Add limit and offset placeholders
+        const logsSql = `SELECT * FROM activity_logs ${where} ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+        const logsValues = [...values, parseInt(limit), parseInt(offset)];
 
-        const [[{ total }]] = await pool.query(
-            `SELECT COUNT(*) as total FROM activity_logs ${where}`,
-            values
-        );
+        const [rows] = await pool.query(logsSql, logsValues);
+
+        const countSql = `SELECT COUNT(*) as total FROM activity_logs ${where}`;
+        const [countRes] = await pool.query(countSql, values);
+        const total = parseInt(countRes[0].total);
 
         res.json({ success: true, logs: rows, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {

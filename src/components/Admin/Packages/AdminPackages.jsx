@@ -6,21 +6,19 @@ export default function AdminPackages() {
     const [packages, setPackages] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
     const [currentPackage, setCurrentPackage] = useState({ id: '', title: '', price: '', category: 'Wedding', description: '' });
-    const admin = JSON.parse(localStorage.getItem('user') || '{}');
+    const admin = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
-    // Fetch real-time data from API
     const fetchPackages = async () => {
         try {
-            const res = await apiCall('/packages');
-            setPackages(res.packages);
+            const data = await apiCall('/packages');
+            // Assuming your backend returns { success: true, packages: [...] }
+            setPackages(data.packages || data || []);
         } catch (err) {
             console.error('Failed to fetch packages', err);
         }
     };
 
-    useEffect(() => {
-        fetchPackages();
-    }, []);
+    useEffect(() => { fetchPackages(); }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -29,50 +27,39 @@ export default function AdminPackages() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const pkgDataToSave = {
-            title: currentPackage.title,
-            price: currentPackage.price,
-            category: currentPackage.category,
-            description: currentPackage.description,
-            adminId: admin.id,
-            adminName: admin.name,
-            adminRole: admin.role
-        };
-
+        const pkgData = { title: currentPackage.title, price: currentPackage.price, category: currentPackage.category, description: currentPackage.description };
         try {
             if (isEditing) {
                 await apiCall(`/packages/${currentPackage.id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(pkgDataToSave)
+                    body: JSON.stringify(pkgData)
                 });
             } else {
                 await apiCall('/packages', {
                     method: 'POST',
-                    body: JSON.stringify(pkgDataToSave)
+                    body: JSON.stringify(pkgData)
                 });
             }
             resetForm();
             fetchPackages();
         } catch (err) {
             console.error('Error saving package: ', err);
-            alert('Failed to save package.');
+            alert('Failed to save package: ' + err.message);
         }
     };
 
-    const handleEdit = (pkg) => {
-        setCurrentPackage(pkg);
-        setIsEditing(true);
-    };
+    const handleEdit = (pkg) => { setCurrentPackage(pkg); setIsEditing(true); };
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this package?')) {
             try {
-                await apiCall(`/packages/${id}?adminId=${admin.id}&adminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+                await apiCall(`/packages/${id}`, {
+                    method: 'DELETE'
+                });
                 fetchPackages();
             } catch (err) {
                 console.error('Error deleting package:', err);
-                alert('Failed to delete package.');
+                alert('Failed to delete package: ' + err.message);
             }
         }
     };
@@ -90,42 +77,20 @@ export default function AdminPackages() {
             </div>
 
             <div className="packages-content">
-                {/* Left Side: Package Form */}
                 <div className="package-editor">
                     <h3>{isEditing ? 'Edit Package' : 'Add New Package'}</h3>
                     <form onSubmit={handleSubmit} className="admin-form">
                         <div className="input-group">
                             <label>Package Title</label>
-                            <input
-                                type="text"
-                                name="title"
-                                value={currentPackage.title}
-                                onChange={handleInputChange}
-                                placeholder="e.g. Birthday Party"
-                                required
-                            />
+                            <input type="text" name="title" value={currentPackage.title} onChange={handleInputChange} placeholder="e.g. Birthday Party" required />
                         </div>
-
                         <div className="input-group">
                             <label>Price</label>
-                            <input
-                                type="text"
-                                name="price"
-                                value={currentPackage.price}
-                                onChange={handleInputChange}
-                                placeholder="e.g. LKR 40,000"
-                                required
-                            />
+                            <input type="text" name="price" value={currentPackage.price} onChange={handleInputChange} placeholder="e.g. LKR 40,000" required />
                         </div>
-
                         <div className="input-group">
                             <label>Category</label>
-                            <select
-                                name="category"
-                                value={currentPackage.category}
-                                onChange={handleInputChange}
-                                required
-                            >
+                            <select name="category" value={currentPackage.category} onChange={handleInputChange} required>
                                 <option value="Wedding">Wedding</option>
                                 <option value="Videography">Videography</option>
                                 <option value="Engagement">Engagement</option>
@@ -134,33 +99,17 @@ export default function AdminPackages() {
                                 <option value="Other">Other</option>
                             </select>
                         </div>
-
                         <div className="input-group">
                             <label>Description (Features)</label>
-                            <textarea
-                                name="description"
-                                value={currentPackage.description}
-                                onChange={handleInputChange}
-                                rows="4"
-                                placeholder="List features..."
-                                required
-                            ></textarea>
+                            <textarea name="description" value={currentPackage.description} onChange={handleInputChange} rows="4" placeholder="List features..." required></textarea>
                         </div>
-
                         <div className="form-actions">
-                            <button type="submit" className="btn-primary">
-                                {isEditing ? 'Save Changes' : 'Add Package'}
-                            </button>
-                            {isEditing && (
-                                <button type="button" className="btn-secondary" onClick={resetForm}>
-                                    Cancel
-                                </button>
-                            )}
+                            <button type="submit" className="btn-primary">{isEditing ? 'Save Changes' : 'Add Package'}</button>
+                            {isEditing && <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>}
                         </div>
                     </form>
                 </div>
 
-                {/* Right Side: Packages List */}
                 <div className="packages-list">
                     {packages.map(pkg => (
                         <div key={pkg.id} className="package-card-admin">
@@ -175,10 +124,7 @@ export default function AdminPackages() {
                             </div>
                         </div>
                     ))}
-
-                    {packages.length === 0 && (
-                        <div className="empty-state">No packages created yet.</div>
-                    )}
+                    {packages.length === 0 && <div className="empty-state">No packages created yet.</div>}
                 </div>
             </div>
         </div>

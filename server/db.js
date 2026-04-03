@@ -1,16 +1,12 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const dbConfig = {
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    port: process.env.MYSQLPORT || 3306
-};
-
 const pool = mysql.createPool({
-    ...dbConfig,
-    database: process.env.MYSQLDATABASE,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18,14 +14,11 @@ const pool = mysql.createPool({
 
 async function initializeDB() {
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.MYSQLDATABASE}\`;`);
-        console.log(`Database '${process.env.MYSQLDATABASE}' checked/created.`);
-        await connection.query(`USE \`${process.env.MYSQLDATABASE}\`;`);
+        console.log("--- MySQL Database Initialization Started ---");
 
         // --- CREATE ALL TABLES IF THEY DON'T EXIST ---
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -39,7 +32,7 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS packages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
@@ -52,7 +45,7 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS bookings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 customerId INT,
@@ -74,11 +67,11 @@ async function initializeDB() {
                 paymentStatus VARCHAR(50) DEFAULT 'Unpaid',
                 paymentReceiptUrl VARCHAR(500),
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (customerId) REFERENCES users(id) ON DELETE SET NULL
+                CONSTRAINT fk_customer FOREIGN KEY (customerId) REFERENCES users(id) ON DELETE SET NULL
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS gallery_categories (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -88,28 +81,28 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS gallery_events (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 categoryId INT NOT NULL,
                 title VARCHAR(255) NOT NULL,
                 coverImage VARCHAR(500),
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (categoryId) REFERENCES gallery_categories(id) ON DELETE CASCADE
+                CONSTRAINT fk_category FOREIGN KEY (categoryId) REFERENCES gallery_categories(id) ON DELETE CASCADE
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS gallery_images (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 eventId INT NOT NULL,
                 url VARCHAR(500) NOT NULL,
                 uploadedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (eventId) REFERENCES gallery_events(id) ON DELETE CASCADE
+                CONSTRAINT fk_event FOREIGN KEY (eventId) REFERENCES gallery_events(id) ON DELETE CASCADE
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS messages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -121,7 +114,7 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS employees (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 fullName VARCHAR(255) NOT NULL,
@@ -136,7 +129,7 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS admins (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -148,7 +141,7 @@ async function initializeDB() {
             );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS old_bookings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 customerName VARCHAR(255),
@@ -159,9 +152,10 @@ async function initializeDB() {
                 totalAmount DECIMAL(12,2),
                 notes TEXT,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
 
-        await connection.query(`
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS activity_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 actorType ENUM('Admin', 'Customer', 'System') DEFAULT 'System',
@@ -176,12 +170,23 @@ async function initializeDB() {
             );
         `);
 
-        console.log("All tables checked/created with IF NOT EXISTS.");
+        // --- HARMONIZE EXISTING TABLES (Add missing columns) ---
+        try {
+            const [columns] = await pool.query("SHOW COLUMNS FROM bookings LIKE 'pendingPaidAmount'");
+            if (columns.length === 0) {
+                console.log("Adding missing column 'pendingPaidAmount' to 'bookings' table...");
+                await pool.query("ALTER TABLE bookings ADD COLUMN pendingPaidAmount DECIMAL(12,2) DEFAULT 0.00 AFTER paidAmount");
+            }
+        } catch (err) {
+            console.error("Error harmonizing 'bookings' table:", err.message);
+        }
 
+        console.log("All tables checked/created in MySQL.");
 
-        // Insert default superadmin (IGNORE duplicates)
-        await connection.query(
-            "INSERT IGNORE INTO admins (name, username, password, role) VALUES (?, ?, ?, ?)",
+        // Insert default admin using INSERT IGNORE (MySQL equivalent of ON CONFLICT DO NOTHING)
+        await pool.query(
+            `INSERT IGNORE INTO admins (name, username, password, role) 
+             VALUES (?, ?, ?, ?)`,
             [
                 process.env.ADMIN_NAME || 'System Admin',
                 process.env.ADMIN_USERNAME || 'admin',
@@ -189,9 +194,8 @@ async function initializeDB() {
                 'superadmin'
             ]
         );
-        console.log(`Default admin created: ${process.env.ADMIN_USERNAME || 'admin'} / ${process.env.ADMIN_PASSWORD || '1234'}`);
+        console.log(`Default admin checked: ${process.env.ADMIN_USERNAME || 'admin'}`);
 
-        connection.end();
         console.log("--- MySQL Initialization Complete ---");
     } catch (error) {
         console.error("Database initialization failed:", error.message);
@@ -199,4 +203,3 @@ async function initializeDB() {
 }
 
 module.exports = { pool, initializeDB };
-

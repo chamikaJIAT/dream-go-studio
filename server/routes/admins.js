@@ -7,11 +7,12 @@ const { logActivity } = require('../logger');
 router.get('/', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT id, name, username, password, role, permissions, createdAt FROM admins ORDER BY createdAt DESC');
-        const parsedRows = rows.map(r => ({
+        // MySQL with mysql2 usually parses JSON automatically
+        const formattedRows = rows.map(r => ({
             ...r,
             permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : (r.permissions || [])
         }));
-        res.json({ success: true, admins: parsedRows });
+        res.json({ success: true, admins: formattedRows });
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: 'Server error' });

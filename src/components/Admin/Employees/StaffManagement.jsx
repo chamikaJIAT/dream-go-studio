@@ -21,8 +21,8 @@ export default function StaffManagement() {
 
     const fetchStaff = async () => {
         try {
-            const res = await apiCall('/employees');
-            setStaff(res.employees);
+            const data = await apiCall('/employees');
+            setStaff(data.employees || data || []);
         } catch (err) {
             console.error('Failed to fetch staff directory', err);
         }
@@ -46,16 +46,17 @@ export default function StaffManagement() {
                     body: JSON.stringify(formData)
                 });
             } else {
+                // Ensure a temporary password if not provided
                 await apiCall('/employees', {
                     method: 'POST',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({ ...formData, password: 'temporary_password' })
                 });
             }
             resetForm();
             fetchStaff();
         } catch (error) {
             console.error("Error saving staff:", error);
-            alert("Failed to save staff member.");
+            alert("Failed to save staff member: " + error.message);
         }
     };
 
@@ -76,11 +77,13 @@ export default function StaffManagement() {
     const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this staff record?")) {
             try {
-                await apiCall(`/employees/${id}`, { method: 'DELETE' });
+                await apiCall(`/employees/${id}`, {
+                    method: 'DELETE'
+                });
                 fetchStaff();
             } catch (error) {
                 console.error("Error deleting:", error);
-                alert("Failed to delete staff record.");
+                alert("Failed to delete staff record: " + error.message);
             }
         }
     };
@@ -95,7 +98,7 @@ export default function StaffManagement() {
         <div className="admin-page-container">
             <div className="page-header">
                 <h2>Staff Directory Management</h2>
-                <p>Manage the full staff directory, including contact details and positions.</p>
+                <p>Manage the full staff directory.</p>
             </div>
 
             <div className="employee-content-split">

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { apiCall, API_BASE_URL } from '../../../api';
 import './AdminGallery.css';
 
-
 export default function AdminGallery() {
     const [categories, setCategories] = useState([]);
     const [events, setEvents] = useState([]);
@@ -22,15 +21,15 @@ export default function AdminGallery() {
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const fileInputRef = useRef(null);
-    const admin = JSON.parse(localStorage.getItem('user') || '{}');
+    const admin = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
     // Fetch Categories
     const fetchCategories = async () => {
         try {
-            const res = await apiCall('/gallery/categories');
-            setCategories(res.categories);
+            const data = await apiCall('/gallery/categories');
+            setCategories(data.categories || data || []);
         } catch (err) {
-            console.error(err);
+            console.error("Fetch categories error:", err);
         }
     };
 
@@ -45,12 +44,10 @@ export default function AdminGallery() {
             return;
         }
         try {
-            const res = await apiCall(`/gallery/events/${selectedCategory.id}`);
-            // Order by createdAt local
-            const evts = res.events.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setEvents(evts);
+            const data = await apiCall(`/gallery/events/${selectedCategory.id}`);
+            setEvents(data.events || data || []);
         } catch (err) {
-            console.error(err);
+            console.error("Fetch events error:", err);
         }
     };
 
@@ -65,10 +62,10 @@ export default function AdminGallery() {
             return;
         }
         try {
-            const res = await apiCall(`/gallery/images/${selectedEvent.id}`);
-            setPhotos(res.images);
+            const data = await apiCall(`/gallery/images/${selectedEvent.id}`);
+            setPhotos(data.images || data || []);
         } catch (err) {
-            console.error(err);
+            console.error("Fetch photos error:", err);
         }
     };
 
@@ -76,69 +73,96 @@ export default function AdminGallery() {
         fetchPhotos();
     }, [selectedEvent]);
 
-    const handleCreateCategory = async (e) => {
-        e.preventDefault();
-        if (!newCategoryName.trim()) return;
+    const logDbActivity = async (action, details, targetType, targetId) => {
         try {
-            await apiCall('/gallery/categories', {
+            await apiCall('/logs', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    name: newCategoryName.trim(), 
-                    description: '',
-                    performingAdminId: admin.id,
-                    performingAdminName: admin.name
+                body: JSON.stringify({
+                    actorType: 'Admin',
+                    actorId: admin.id || null,
+                    actorName: admin.name || 'Admin',
+                    action,
+                    targetType,
+                    targetId,
+                    details
                 })
             });
+        } catch (e) {
+            console.error("Logging failed", e);
+        }
+    };
+
+    const handleCreateCategory = async (e) => {
+        e.preventDefault();
+        const name = newCategoryName.trim();
+        if (!name) return;
+        try {
+            const data = await apiCall('/gallery/categories', {
+                method: 'POST',
+                body: JSON.stringify({ name, description: '' })
+            });
+            
             setNewCategoryName('');
             fetchCategories();
+            logDbActivity('Created Gallery Category', `Category '${name}' created.`, 'Gallery Category', data.id);
         } catch (err) {
             console.error("Create category failed", err);
-            alert("Failed to create category");
+            alert("Failed to create category: " + err.message);
         }
     };
 
     const handleCreateEvent = async (e) => {
         e.preventDefault();
-        if (!newEventName.trim() || !selectedCategory) return;
+        const title = newEventName.trim();
+        if (!title || !selectedCategory) return;
         try {
-            await apiCall('/gallery/events', {
+            const data = await apiCall('/gallery/events', {
                 method: 'POST',
                 body: JSON.stringify({ 
                     categoryId: selectedCategory.id, 
-                    title: newEventName.trim(),
-                    date: newEventDate,
-                    performingAdminId: admin.id,
-                    performingAdminName: admin.name
+                    title 
                 })
             });
-            setNewEventName('');
-            setNewEventDate('');
+
+            newEventName('');
+            newEventDate('');
             fetchEvents();
+            logDbActivity('Created Gallery Event', `Event '${title}' created.`, 'Gallery Event', data.id);
         } catch (err) {
             console.error("Create event failed", err);
-            alert("Failed to create event");
+            alert("Failed to create event: " + err.message);
         }
     };
 
     const handleDeleteCategory = async (cat) => {
-        if (!window.confirm(`Delete category "${cat.name}"? This will delete attached events/photos in database.`)) return;
+        if (!window.confirm(`Delete category "${cat.name}"? This will delete attached events/photos.`)) return;
         try {
-            await apiCall(`/gallery/categories/${cat.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+            await apiCall(`/gallery/categories/${cat.id}`, {
+                method: 'DELETE'
+            });
+
             if (selectedCategory?.id === cat.id) setSelectedCategory(null);
             fetchCategories();
+            logDbActivity('Deleted Gallery Category', `Category (ID: ${cat.id}) deleted.`, 'Gallery Category', cat.id);
         } catch (err) {
             console.error("Delete category failed", err);
+            alert("Delete failed: " + err.message);
         }
     };
 
     const handleDeleteEvent = async (evt) => {
         if (!window.confirm(`Delete event "${evt.title || evt.name}"?`)) return;
         try {
-            await apiCall(`/gallery/events/${evt.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+            await apiCall(`/gallery/events/${evt.id}`, {
+                method: 'DELETE'
+            });
+
             if (selectedEvent?.id === evt.id) setSelectedEvent(null);
             fetchEvents();
+            logDbActivity('Deleted Gallery Event', `Event (ID: ${evt.id}) deleted.`, 'Gallery Event', evt.id);
         } catch (err) {
             console.error("Delete event failed", err);
+            alert("Delete failed: " + err.message);
         }
     };
 
@@ -168,13 +192,10 @@ export default function AdminGallery() {
             const formData = new FormData();
             formData.append('eventId', selectedEvent.id);
             filesToUpload.forEach(file => {
-                formData.append('images', file);
+                formData.append('photos', file);
             });
 
-            formData.append('performingAdminId', admin.id);
-            formData.append('performingAdminName', admin.name);
-
-            await apiCall('/gallery/images', {
+            await apiCall('/gallery/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -183,11 +204,13 @@ export default function AdminGallery() {
             setPreviews([]);
             setUploadProgress(0);
             if (fileInputRef.current) fileInputRef.current.value = "";
-            fetchPhotos(); // Refresh newly uploaded images
-            fetchEvents(); // Event cover might update
+            
+            fetchPhotos();
+            logDbActivity('Uploaded Gallery Images', `Uploaded ${filesToUpload.length} images to event #${selectedEvent.id}.`, 'Gallery Event', selectedEvent.id);
+            
         } catch (err) {
             console.error("Upload failed", err);
-            alert("Upload failed. Make sure server accepts the size constraints.");
+            alert("Upload failed: " + (err.message || "An error occurred during upload."));
         } finally {
             setIsUploading(false);
             setUploadProgress(0);
@@ -204,10 +227,15 @@ export default function AdminGallery() {
     const handleDeletePhoto = async (photo) => {
         if (window.confirm('Are you sure you want to remove this photo?')) {
             try {
-                await apiCall(`/gallery/images/${photo.id}?performingAdminId=${admin.id}&performingAdminName=${encodeURIComponent(admin.name)}`, { method: 'DELETE' });
+                await apiCall(`/gallery/images/${photo.id}`, {
+                    method: 'DELETE'
+                });
+                
                 fetchPhotos();
+                logDbActivity('Deleted Gallery Image', `Image (ID: ${photo.id}) deleted.`, 'Gallery Image', photo.id);
             } catch (err) {
                 console.error("Delete photo failed", err);
+                alert("Delete failed: " + err.message);
             }
         }
     };
@@ -253,7 +281,7 @@ export default function AdminGallery() {
                 {categories.map(cat => (
                     <div key={cat.id} className="admin-card" onClick={() => setSelectedCategory(cat)}>
                         <div className="card-image-placeholder">
-                            {cat.coverUrl ? <img src={cat.coverUrl} alt={cat.name} /> : <span className="icon-placeholder">📁</span>}
+                            {cat.coverImage ? <img src={cat.coverImage} alt={cat.name} /> : <span className="icon-placeholder">📁</span>}
                         </div>
                         <div className="card-info">
                             <h4>{cat.name}</h4>
@@ -276,6 +304,7 @@ export default function AdminGallery() {
                     onChange={e => setNewEventName(e.target.value)}
                     required
                 />
+                {/* Date is currently handled by createdAt in DB, but keep for UI if needed */}
                 <input
                     type="date"
                     value={newEventDate}
@@ -288,12 +317,12 @@ export default function AdminGallery() {
                 {events.map(evt => (
                     <div key={evt.id} className="admin-card" onClick={() => setSelectedEvent(evt)}>
                         <div className="card-image-placeholder">
-                            {evt.coverImage || evt.coverUrl ? <img src={evt.coverImage || evt.coverUrl} alt={evt.title || evt.name} /> : <span className="icon-placeholder">📅</span>}
+                            {evt.coverImage ? <img src={evt.coverImage} alt={evt.title || evt.name} /> : <span className="icon-placeholder">📅</span>}
                         </div>
                         <div className="card-info">
                             <div>
                                 <h4>{evt.title || evt.name}</h4>
-                                {evt.date && <small className="event-date">{new Date(evt.date).toLocaleDateString()}</small>}
+                                {evt.createdAt && <small className="event-date">{new Date(evt.createdAt).toLocaleDateString()}</small>}
                             </div>
                             <button className="icon-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteEvent(evt); }}>🗑️</button>
                         </div>
@@ -342,7 +371,7 @@ export default function AdminGallery() {
 
                         <div className="upload-buttons">
                             <button className="btn-primary" onClick={submitPhotosUpload} disabled={isUploading}>
-                                {isUploading ? 'Uploading Please Wait...' : `Upload ${previews.length} Photos to Server`}
+                                {isUploading ? 'Uploading to Server...' : `Upload ${previews.length} Photos`}
                             </button>
                             <button className="btn-secondary" onClick={cancelUpload} disabled={isUploading}>Cancel</button>
                         </div>
@@ -370,7 +399,7 @@ export default function AdminGallery() {
         <div className="admin-page-container">
             <div className="page-header">
                 <h2>Gallery Management</h2>
-                <p>Organize photos into Categories and Events.</p>
+                <p>Organize photos into Categories and Events with cloud storage.</p>
                 {renderBreadcrumbs()}
             </div>
 
